@@ -91,12 +91,13 @@ def process(job_id):
     vdir = os.path.join(d, "voice")
     shutil.rmtree(vdir, ignore_errors=True)
     os.makedirs(vdir)
-    line_files = []
-    for i, line in enumerate(script["lines"]):
-        line_files.append(tts.speak(line, s["tts_voice"], s["tts_rate"], os.path.join(vdir, f"{i:02d}.mp3")))
-    db.append_log(job_id, f"เสียงพากย์: {tts.last_engine['name']}")
-    voice = os.path.join(d, "voice.m4a")
-    timings, total = video.build_voice(line_files, voice)
+    tts.last_engine.clear()
+    voice, timings, total = tts.speak_script(script["lines"], s, vdir, video.build_voice)
+    db.append_log(job_id, f"เสียงพากย์: {tts.last_engine.get('name', '')}")
+    if tts.last_engine.get("fallback_reason"):
+        db.append_log(job_id, "Gemini TTS ใช้ไม่ได้ เลยใช้เสียงสำรอง: " + tts.last_engine["fallback_reason"])
+    if s.get("tts_engine") == "gemini":
+        cost += 0.008
 
     # 4) visuals ---------------------------------------------------------
     seg_dir = os.path.join(d, "seg")

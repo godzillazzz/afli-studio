@@ -115,7 +115,31 @@ a{color:var(--brand)}
 
 <!-- SETTINGS -->
 <section id="v-settings" class="hide">
+  <div class="card"><h2>🔑 Google Gemini API Key</h2>
+    <input data-k="gemini_api_key" placeholder="AIza...">
+    <div class="hint">คีย์เดียวใช้ได้ 3 อย่าง: เสียงพากย์ธรรมชาติ, AI เขียนบท (ถ้าไม่ได้ใส่คีย์ Claude), วิดีโอ Veo<br>สร้างคีย์ที่ <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> แล้วเปิด Billing</div>
+  </div>
   <div class="card"><h2>🗣️ เสียงพากย์</h2>
+    <label>ระบบเสียง</label>
+    <select data-k="tts_engine" onchange="ttsUI()">
+      <option value="gemini">Gemini — พูดธรรมชาติ เหมือนคนรีวิว (~0.3 บาท/คลิป) แนะนำ</option>
+      <option value="edge">Microsoft Edge — ฟรี แต่เสียงเหมือนอ่าน</option>
+    </select>
+    <div id="tts-gem">
+      <label>เสียง Gemini</label>
+      <select data-k="gemini_voice">
+        <option value="Leda">Leda — ผู้หญิง สดใส วัยรุ่น</option>
+        <option value="Aoede">Aoede — ผู้หญิง สบายๆ</option>
+        <option value="Zephyr">Zephyr — ผู้หญิง สดชื่น</option>
+        <option value="Kore">Kore — ผู้หญิง หนักแน่น</option>
+        <option value="Puck">Puck — ผู้ชาย ร่าเริง</option>
+        <option value="Fenrir">Fenrir — ผู้ชาย ตื่นเต้น</option>
+        <option value="Charon">Charon — ผู้ชาย นุ่มลึก</option>
+      </select>
+      <label>สไตล์การพูด (ไม่ใส่ก็ได้)</label>
+      <textarea data-k="tts_style" rows="3" placeholder="เช่น: Speak like an excited Thai online seller, fast and fun"></textarea>
+    </div>
+    <div id="tts-edge">
     <label>เสียง</label>
     <select data-k="tts_voice">
       <option value="th-TH-PremwadeeNeural">เปรมวดี (ผู้หญิง สดใส)</option>
@@ -123,6 +147,7 @@ a{color:var(--brand)}
     </select>
     <label>ความเร็วเสียง</label>
     <select data-k="tts_rate"><option value="+0%">ปกติ</option><option value="+12%">เร็วขึ้นนิด (แนะนำ)</option><option value="+25%">เร็ว</option></select>
+    </div>
     <div class="hint">เพลงประกอบ: ใส่ไฟล์ .mp3 ไว้ในโฟลเดอร์ <b>data/music</b> บนเซิร์ฟเวอร์ ระบบจะสุ่มใช้เอง</div>
   </div>
   <div class="card"><h2>🧠 AI เขียนสคริปต์ (Claude)</h2>
@@ -138,14 +163,13 @@ a{color:var(--brand)}
     <label>จำนวนคลิป AI ต่อวิดีโอ (โหมด AI ล้วน)</label>
     <select data-k="ai_clip_count"><option>1</option><option>2</option><option>3</option></select>
     <div id="pv-veo">
-      <label>Gemini API Key</label><input data-k="gemini_api_key" placeholder="AIza...">
       <label>รุ่น Veo</label>
       <select data-k="veo_model">
         <option value="veo-3.1-lite-generate-preview">Veo 3.1 Lite — ถูกสุด ~11 บาท/คลิป 6 วิ</option>
         <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast — แนะนำ ~22 บาท/คลิป 6 วิ</option>
         <option value="veo-3.1-generate-preview">Veo 3.1 — สวยสุด ~86 บาท/คลิป 6 วิ</option>
       </select>
-      <div class="hint">สร้างคีย์ที่ <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> แล้วเปิดการเรียกเก็บเงิน (Billing) ของโปรเจกต์ Veo ไม่มีโควตาฟรี และไม่ได้ใช้เครดิตของ Google Flow</div>
+      <div class="hint">ใช้ Gemini API Key ด้านบน Veo ไม่มีโควตาฟรี และไม่ได้ใช้เครดิตของ Google Flow</div>
     </div>
     <div id="pv-fal">
     <label>fal.ai API Key</label><input data-k="fal_key" placeholder="xxxxxxxx:xxxxxxxx">
@@ -338,9 +362,10 @@ async function del(){if(!confirm('ลบงานนี้?'))return;await api('
 async function loadSettings(){
   settings=await api('/api/settings');
   $$('#v-settings [data-k]').forEach(el=>{const v=settings[el.dataset.k]??'';el.type==='checkbox'?el.checked=v==='1':el.value=v});
-  provUI();
+  provUI();ttsUI();
   $('#ttState').textContent=settings.tiktok_connected?'✅ เชื่อมบัญชี TikTok แล้ว':'ยังไม่ได้เชื่อมบัญชี TikTok';
 }
+function ttsUI(){const v=$('[data-k=tts_engine]').value;$('#tts-gem').classList.toggle('hide',v!=='gemini');$('#tts-edge').classList.toggle('hide',v==='gemini')}
 function provUI(){const v=$('[data-k=ai_provider]').value;$('#pv-veo').classList.toggle('hide',v!=='veo');$('#pv-fal').classList.toggle('hide',v==='veo')}
 async function saveSettings(){
   const b={};$$('#v-settings [data-k]').forEach(el=>b[el.dataset.k]=el.type==='checkbox'?(el.checked?'1':'0'):el.value);
