@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ee4d2d">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon.svg">
+<title>Afli Studio</title>
+<style>
+:root{--bg:#f6f4f2;--card:#fff;--ink:#1d1b1a;--mute:#7a726d;--brand:#ee4d2d;--brand2:#ff7a45;--ok:#16a34a;--err:#dc2626;--line:#ebe6e2;--r:16px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Noto Sans Thai","Sukhumvit Set","Leelawadee UI",system-ui,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;padding-bottom:84px}
+header{position:sticky;top:0;z-index:5;background:linear-gradient(120deg,var(--brand),var(--brand2));color:#fff;padding:calc(env(safe-area-inset-top) + 14px) 18px 14px;display:flex;align-items:center;gap:10px}
+header h1{font-size:19px;margin:0;font-weight:700;letter-spacing:.2px}
+header .sub{font-size:12px;opacity:.85}
+main{padding:14px;max-width:640px;margin:0 auto}
+.card{background:var(--card);border-radius:var(--r);padding:16px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+h2{font-size:17px;margin:0 0 10px}
+label{display:block;font-size:14px;color:var(--mute);margin:12px 0 6px}
+input,textarea,select{width:100%;font:inherit;padding:12px 14px;border:1.5px solid var(--line);border-radius:12px;background:#fff;color:var(--ink)}
+input:focus,textarea:focus{outline:none;border-color:var(--brand)}
+textarea{resize:vertical;min-height:64px}
+button{font:inherit;border:0;border-radius:12px;padding:13px 16px;cursor:pointer;font-weight:600}
+.btn{background:var(--brand);color:#fff;width:100%;font-size:17px;padding:15px}
+.btn:disabled{opacity:.5}
+.btn2{background:#f1ece8;color:var(--ink)}
+.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1 1 auto}
+.seg{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.seg button{background:#f1ece8;color:var(--ink);padding:10px 6px;font-size:14px;line-height:1.3;border:2px solid transparent}
+.seg button small{display:block;font-weight:400;color:var(--mute);font-size:12px}
+.seg button.on{border-color:var(--brand);background:#fff4f0}
+.sw{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line)}
+.sw input{width:auto;transform:scale(1.4)}
+details summary{cursor:pointer;color:var(--brand);font-size:14px;padding:6px 0}
+nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom);z-index:5}
+nav button{flex:1;background:none;color:var(--mute);padding:10px 0 12px;font-size:12px;font-weight:500;border-radius:0}
+nav button b{display:block;font-size:22px;line-height:1.2}
+nav button.on{color:var(--brand)}
+.job{display:flex;gap:12px;align-items:center;cursor:pointer}
+.job img,.job .ph{width:58px;height:100px;border-radius:10px;object-fit:cover;background:#eee;flex:none;display:flex;align-items:center;justify-content:center;font-size:22px}
+.job .t{font-weight:600;font-size:15px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.job .m{font-size:13px;color:var(--mute);margin-top:3px}
+.bar{height:6px;background:#f1ece8;border-radius:6px;margin-top:8px;overflow:hidden}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));transition:width .4s}
+.badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;background:#f1ece8;margin-right:4px}
+.b-done{background:#dcfce7;color:#166534}.b-error{background:#fee2e2;color:#991b1b}.b-running,.b-queued,.b-uploading{background:#fff1e6;color:#9a3412}
+video{width:100%;max-height:70vh;border-radius:12px;background:#000}
+.hint{font-size:13px;color:var(--mute);line-height:1.5;margin-top:6px}
+.err{color:var(--err);font-size:14px;white-space:pre-wrap}
+pre{font-size:12px;white-space:pre-wrap;background:#faf8f6;padding:10px;border-radius:10px;max-height:240px;overflow:auto}
+.toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%);background:#1d1b1a;color:#fff;padding:10px 16px;border-radius:20px;font-size:14px;z-index:9;opacity:0;transition:.3s;pointer-events:none}
+.toast.on{opacity:1}
+.hide{display:none!important}
+.status{font-size:14px;padding:8px 10px;border-radius:10px;background:#faf8f6;margin-top:8px}
+a{color:var(--brand)}
+</style>
+</head>
+<body>
+<header><div style="font-size:26px">🎬</div><div><h1>Afli Studio</h1><div class="sub">ลิงก์สินค้า ➜ คลิปพร้อมโพสต์</div></div></header>
+
+<main>
+<!-- LOGIN -->
+<section id="v-login" class="hide">
+  <div class="card"><h2>เข้าสู่ระบบ</h2>
+    <input id="pw" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
+    <div style="height:12px"></div><button class="btn" onclick="login()">เข้าสู่ระบบ</button>
+    <div id="loginErr" class="err"></div></div>
+</section>
+
+<!-- CREATE -->
+<section id="v-create" class="hide">
+  <div class="card">
+    <h2>สร้างคลิปจากลิงก์สินค้า</h2>
+    <label>ลิงก์สินค้า Shopee (หรือลิงก์ affiliate)</label>
+    <div class="row"><textarea id="url" rows="2" placeholder="วางลิงก์ที่นี่ เช่น https://s.shopee.co.th/..."></textarea></div>
+    <div style="height:8px"></div>
+    <button class="btn2" style="width:100%" onclick="pasteUrl()">📋 วางลิงก์จากคลิปบอร์ด</button>
+    <label>รูปแบบวิดีโอ</label>
+    <div class="seg" id="modes">
+      <button data-m="slideshow">🖼️ สไลด์รูป<small>~1 บาท/คลิป</small></button>
+      <button data-m="mix">✨ ผสม AI<small>~10 บาท/คลิป</small></button>
+      <button data-m="ai">🤖 AI ล้วน<small>~20 บาท/คลิป</small></button>
+    </div>
+    <details style="margin-top:12px"><summary>➕ ใส่ข้อมูลเอง / อัปโหลดรูปหรือคลิป (ถ้าดึงจาก Shopee ไม่ได้)</summary>
+      <label>ชื่อสินค้า</label><input id="name" placeholder="เช่น พัดลมพกพา ชาร์จ USB">
+      <label>ราคา (บาท)</label><input id="price" inputmode="numeric" placeholder="เช่น 199">
+      <label>รูป/คลิปสินค้า (เลือกได้หลายไฟล์)</label><input id="files" type="file" multiple accept="image/*,video/*">
+      <div class="hint">ใช้รูปหรือคลิปที่คุณถ่ายเอง หรือจากหน้าร้านค้า ไม่ควรใช้คลิปของคนอื่นเพราะติดลิขสิทธิ์</div>
+    </details>
+    <div style="margin-top:10px">
+      <div class="sw"><span>📘 โพสต์ลง Facebook อัตโนมัติ</span><input type="checkbox" id="pfb"></div>
+      <div class="sw"><span>🎵 ส่งเข้าแอป TikTok อัตโนมัติ</span><input type="checkbox" id="ptt"></div>
+    </div>
+    <div style="height:10px"></div>
+    <button class="btn" id="goBtn" onclick="createJob()">🎬 สร้างคลิป</button>
+    <div id="createErr" class="err"></div>
+  </div>
+  <div class="hint" style="padding:0 6px">ระบบจะเขียนสคริปต์ พากย์เสียงไทย ใส่ซับไตเติล และตัดต่อให้อัตโนมัติ ใช้เวลาประมาณ 1–3 นาที (โหมด AI 3–10 นาที)</div>
+</section>
+
+<!-- JOBS -->
+<section id="v-jobs" class="hide"><div id="jobList"></div></section>
+
+<!-- DETAIL -->
+<section id="v-detail" class="hide">
+  <button class="btn2" onclick="go('jobs')" style="margin-bottom:10px">← กลับ</button>
+  <div id="detail"></div>
+</section>
+
+<!-- SETTINGS -->
+<section id="v-settings" class="hide">
+  <div class="card"><h2>🗣️ เสียงพากย์</h2>
+    <label>เสียง</label>
+    <select data-k="tts_voice">
+      <option value="th-TH-PremwadeeNeural">เปรมวดี (ผู้หญิง สดใส)</option>
+      <option value="th-TH-AcharaNeural">อัจฉรา (ผู้หญิง นุ่มนวล)</option>
+      <option value="th-TH-NiwatNeural">นิวัฒน์ (ผู้ชาย)</option>
+    </select>
+    <label>ความเร็วเสียง</label>
+    <select data-k="tts_rate"><option value="+0%">ปกติ</option><option value="+12%">เร็วขึ้นนิด (แนะนำ)</option><option value="+25%">เร็ว</option></select>
+    <div class="hint">เพลงประกอบ: ใส่ไฟล์ .mp3 ไว้ในโฟลเดอร์ <b>data/music</b> บนเซิร์ฟเวอร์ ระบบจะสุ่มใช้เอง</div>
+  </div>
+  <div class="card"><h2>🧠 AI เขียนสคริปต์ (Claude)</h2>
+    <label>Anthropic API Key</label><input data-k="anthropic_api_key" placeholder="sk-ant-...">
+    <div class="hint">สมัครที่ <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> ค่าใช้จ่ายประมาณ 0.1 บาท/คลิป ถ้าไม่ใส่ ระบบจะใช้สคริปต์แม่แบบแทน</div>
+  </div>
+  <div class="card"><h2>🤖 วิดีโอ AI</h2>
+    <label>ใช้ AI ตัวไหนสร้างวิดีโอ</label>
+    <select data-k="ai_provider" onchange="provUI()">
+      <option value="fal">Kling 2.1 (fal.ai) — ~9 บาท/คลิป 5 วิ</option>
+      <option value="veo">Google Veo 3.1 (Gemini API)</option>
+    </select>
+    <label>จำนวนคลิป AI ต่อวิดีโอ (โหมด AI ล้วน)</label>
+    <select data-k="ai_clip_count"><option>1</option><option>2</option><option>3</option></select>
+    <div id="pv-veo">
+      <label>Gemini API Key</label><input data-k="gemini_api_key" placeholder="AIza...">
+      <label>รุ่น Veo</label>
+      <select data-k="veo_model">
+        <option value="veo-3.1-lite-generate-preview">Veo 3.1 Lite — ถูกสุด ~11 บาท/คลิป 6 วิ</option>
+        <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast — แนะนำ ~22 บาท/คลิป 6 วิ</option>
+        <option value="veo-3.1-generate-preview">Veo 3.1 — สวยสุด ~86 บาท/คลิป 6 วิ</option>
+      </select>
+      <div class="hint">สร้างคีย์ที่ <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> แล้วเปิดการเรียกเก็บเงิน (Billing) ของโปรเจกต์ Veo ไม่มีโควตาฟรี และไม่ได้ใช้เครดิตของ Google Flow</div>
+    </div>
+    <div id="pv-fal">
+    <label>fal.ai API Key</label><input data-k="fal_key" placeholder="xxxxxxxx:xxxxxxxx">
+    <div class="hint">สมัครที่ <a href="https://fal.ai" target="_blank">fal.ai</a> เติมเงินขั้นต่ำได้ จ่ายตามใช้ ประมาณ 9 บาทต่อคลิป AI 5 วินาที</div>
+    </div>
+  </div>
+  <div class="card"><h2>📘 Facebook Page</h2>
+    <label>Page ID</label><input data-k="fb_page_id" inputmode="numeric">
+    <label>Page Access Token</label><input data-k="fb_page_token">
+    <div class="sw"><span>ติ๊กโพสต์ Facebook ไว้ล่วงหน้าทุกครั้ง</span><input type="checkbox" data-k="auto_post_fb"></div>
+    <div class="hint">ดูวิธีขอ Token ในคู่มือ (คู่มือการใช้งาน.md ข้อ 5)</div>
+  </div>
+  <div class="card"><h2>🎵 TikTok</h2>
+    <label>Client Key</label><input data-k="tiktok_client_key">
+    <label>Client Secret</label><input data-k="tiktok_client_secret">
+    <label>Public URL ของระบบ (https://...)</label><input data-k="public_url" placeholder="https://afli.yourdomain.com">
+    <div class="sw"><span>ติ๊กส่งเข้า TikTok ไว้ล่วงหน้าทุกครั้ง</span><input type="checkbox" data-k="auto_post_tiktok"></div>
+    <div id="ttState" class="status"></div>
+    <div style="height:8px"></div>
+    <button class="btn2" style="width:100%" onclick="saveSettings().then(()=>location.href='/api/tiktok/login')">🔗 เชื่อมบัญชี TikTok</button>
+    <div class="hint">คลิปจะเข้า "กล่องข้อความ" ในแอป TikTok ➜ แตะเพื่อแก้ไข ➜ เพิ่มลิงก์สินค้า (ปักตะกร้า) ➜ โพสต์<br>ยังไม่ได้ตั้งค่า? ใช้ปุ่ม "ดาวน์โหลด" แล้วโพสต์เองในแอปได้เลย</div>
+  </div>
+  <button class="btn" onclick="saveSettings().then(()=>toast('บันทึกแล้ว ✅'))">💾 บันทึกการตั้งค่า</button>
+  <div style="height:12px"></div>
+  <button class="btn2" style="width:100%" onclick="document.cookie='afli=;max-age=0';location.reload()">ออกจากระบบ</button>
+</section>
+</main>
+
+<nav id="nav" class="hide">
+  <button data-v="create"><b>🎬</b>สร้างคลิป</button>
+  <button data-v="jobs"><b>📋</b>งานทั้งหมด</button>
+  <button data-v="settings"><b>⚙️</b>ตั้งค่า</button>
+</nav>
+<div class="toast" id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let mode='slideshow', view='create', detailId=null, timer=null, settings={};
+const STATUS={queued:'รอคิว',running:'กำลังทำ',uploading:'อัปโหลด',done:'เสร็จแล้ว',error:'ผิดพลาด'};
+
+async function api(path,opt={}){
+  const r=await fetch(path,opt);
+  if(r.status===401){show('login');throw new Error('login');}
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok) throw new Error(j.detail||('HTTP '+r.status));
+  return j;
+}
+const post=(p,b)=>api(p,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b||{})});
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('on');setTimeout(()=>e.classList.remove('on'),2200)}
+function esc(s){return String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+async function copy(t){try{await navigator.clipboard.writeText(t);toast('คัดลอกแล้ว')}catch{prompt('คัดลอกข้อความนี้',t)}}
+
+function show(v){
+  $$('main>section').forEach(s=>s.classList.add('hide'));
+  $('#v-'+v).classList.remove('hide');
+  $('#nav').classList.toggle('hide',v==='login');
+  $$('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.v===v||(v==='detail'&&b.dataset.v==='jobs')));
+}
+function go(v,id){
+  view=v; detailId=id||null; show(v); clearInterval(timer);
+  if(v==='jobs'){loadJobs();timer=setInterval(loadJobs,3000)}
+  if(v==='detail'){loadDetail(true);timer=setInterval(()=>loadDetail(false),3000)}
+  if(v==='settings')loadSettings();
+  location.hash=v+(id?'/'+id:'');
+}
+$$('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
+$$('#modes button').forEach(b=>b.onclick=()=>{mode=b.dataset.m;$$('#modes button').forEach(x=>x.classList.toggle('on',x===b))});
+
+async function login(){
+  try{await post('/api/login',{password:$('#pw').value});start()}catch(e){$('#loginErr').textContent=e.message}
+}
+async function pasteUrl(){try{$('#url').value=await navigator.clipboard.readText()}catch{toast('กดค้างที่ช่องแล้วเลือก "วาง"')}}
+
+async function createJob(){
+  const fd=new FormData();
+  fd.append('url',$('#url').value.trim()); fd.append('mode',mode);
+  fd.append('name',$('#name').value); fd.append('price',$('#price').value);
+  fd.append('post_fb',$('#pfb').checked?'1':'0'); fd.append('post_tiktok',$('#ptt').checked?'1':'0');
+  for(const f of $('#files').files) fd.append('files',f);
+  $('#goBtn').disabled=true; $('#createErr').textContent='';
+  try{const j=await api('/api/jobs',{method:'POST',body:fd});
+    $('#url').value='';$('#name').value='';$('#price').value='';$('#files').value='';
+    toast('เริ่มสร้างคลิปแล้ว'); go('detail',j.id);
+  }catch(e){$('#createErr').textContent=e.message}
+  $('#goBtn').disabled=false;
+}
+
+function badge(s){return `<span class="badge b-${s}">${STATUS[s]||s}</span>`}
+async function loadJobs(){
+  const jobs=await api('/api/jobs');
+  $('#jobList').innerHTML=jobs.length?jobs.map(j=>`
+    <div class="card job" onclick="go('detail',${j.id})">
+      ${j.has_video?`<img src="/api/jobs/${j.id}/thumb?${j.updated}" loading="lazy">`:`<div class="ph">${j.status==='error'?'⚠️':'⏳'}</div>`}
+      <div style="flex:1;min-width:0">
+        <div class="t">${esc(j.product?.name||j.url||'งาน #'+j.id)}</div>
+        <div class="m">${badge(j.status)} ${esc(j.step||'')}</div>
+        ${j.status==='running'||j.status==='queued'?`<div class="bar"><i style="width:${j.progress}%"></i></div>`:''}
+        <div class="m">${j.fb_status?'📘 '+esc(j.fb_status).slice(0,40)+' ':''}${j.tt_status?'🎵 '+esc(j.tt_status).slice(0,30):''}</div>
+      </div></div>`).join(''):'<div class="card hint">ยังไม่มีงาน กด 🎬 สร้างคลิป เพื่อเริ่ม</div>';
+}
+
+let lastDetailKey='';
+async function loadDetail(force){
+  const j=await api('/api/jobs/'+detailId);
+  const key=j.status+j.progress+j.fb_status+j.tt_status+j.step;
+  if(!force&&key===lastDetailKey)return; lastDetailKey=key;
+  const editing=document.activeElement&&document.activeElement.tagName==='TEXTAREA';
+  if(editing&&!force)return;
+  const lines=(j.script?.lines||[]).join('\n');
+  $('#detail').innerHTML=`
+  <div class="card">
+    <h2>${esc(j.product?.name||'งาน #'+j.id)}</h2>
+    <div>${badge(j.status)} ${esc(j.step||'')} ${j.cost?`<span class="badge">≈ ${j.cost} บาท</span>`:''}</div>
+    ${j.status==='running'||j.status==='queued'?`<div class="bar"><i style="width:${j.progress}%"></i></div>`:''}
+    ${j.error?`<div class="err" style="margin-top:8px">${esc(j.error)}</div>`:''}
+    ${j.has_video?`<div style="height:10px"></div><video src="/api/jobs/${j.id}/video?${j.updated}" controls playsinline preload="metadata"></video>`:''}
+  </div>
+  ${j.has_video?`
+  <div class="card">
+    <h2>📤 โพสต์</h2>
+    <div class="row">
+      <a class="btn2" style="text-align:center;text-decoration:none;padding:13px;border-radius:12px;font-weight:600;color:inherit" href="/api/jobs/${j.id}/video?dl=1">⬇️ ดาวน์โหลด</a>
+      <button class="btn2" onclick="copy($('#cap').value)">📋 คัดลอกแคปชัน</button>
+    </div><div style="height:8px"></div>
+    <div class="row">
+      <button class="btn2" onclick="postTo('facebook')">📘 โพสต์ Facebook</button>
+      <button class="btn2" onclick="postTo('tiktok')">🎵 ส่งเข้า TikTok</button>
+    </div>
+    ${j.fb_status?`<div class="status">📘 ${esc(j.fb_status)}</div>`:''}
+    ${j.tt_status?`<div class="status">🎵 ${esc(j.tt_status)}</div>`:''}
+    ${j.url?`<div style="height:8px"></div><button class="btn2" style="width:100%" onclick="copy('${esc(j.url)}')">🛒 คัดลอกลิงก์สินค้า (ไว้ปักตะกร้า)</button>`:''}
+    <label>แคปชัน</label><textarea id="cap" rows="5">${esc(j.caption||'')}</textarea>
+    <div style="height:6px"></div><button class="btn2" onclick="saveCap()">💾 บันทึกแคปชัน</button>
+  </div>`:''}
+  ${j.script?.lines?`
+  <div class="card">
+    <h2>📝 สคริปต์เสียงพากย์</h2>
+    <div class="hint">แก้ไขได้ บรรทัดละ 1 ซับไตเติล แล้วกดสร้างใหม่</div>
+    <textarea id="lines" rows="10">${esc(lines)}</textarea>
+    <div style="height:8px"></div>
+    <button class="btn" onclick="rerender()">🔁 สร้างวิดีโอใหม่จากสคริปต์นี้</button>
+  </div>`:''}
+  <div class="card">
+    <div class="row">
+      <button class="btn2" onclick="retry()">♻️ เริ่มใหม่ทั้งหมด</button>
+      <button class="btn2" style="color:var(--err)" onclick="del()">🗑️ ลบ</button>
+    </div>
+    <details><summary>บันทึกการทำงาน</summary><pre>${esc(j.log||'')}</pre></details>
+  </div>`;
+}
+async function postTo(t){await post(`/api/jobs/${detailId}/post/${t}`);toast('กำลังส่ง...');setTimeout(()=>loadDetail(true),1500)}
+async function saveCap(){await post(`/api/jobs/${detailId}/caption`,{caption:$('#cap').value});toast('บันทึกแล้ว')}
+async function rerender(){await post(`/api/jobs/${detailId}/rerender`,{lines:$('#lines').value.split('\n')});toast('กำลังสร้างใหม่');loadDetail(true)}
+async function retry(){await post(`/api/jobs/${detailId}/retry`);loadDetail(true)}
+async function del(){if(!confirm('ลบงานนี้?'))return;await api('/api/jobs/'+detailId,{method:'DELETE'});go('jobs')}
+
+async function loadSettings(){
+  settings=await api('/api/settings');
+  $$('#v-settings [data-k]').forEach(el=>{const v=settings[el.dataset.k]??'';el.type==='checkbox'?el.checked=v==='1':el.value=v});
+  provUI();
+  $('#ttState').textContent=settings.tiktok_connected?'✅ เชื่อมบัญชี TikTok แล้ว':'ยังไม่ได้เชื่อมบัญชี TikTok';
+}
+function provUI(){const v=$('[data-k=ai_provider]').value;$('#pv-veo').classList.toggle('hide',v!=='veo');$('#pv-fal').classList.toggle('hide',v==='veo')}
+async function saveSettings(){
+  const b={};$$('#v-settings [data-k]').forEach(el=>b[el.dataset.k]=el.type==='checkbox'?(el.checked?'1':'0'):el.value);
+  await post('/api/settings',b);
+}
+
+async function start(){
+  try{await api('/api/me')}catch{return}
+  try{const s=await api('/api/settings');settings=s;
+    mode=s.default_mode||'slideshow';$('#pfb').checked=s.auto_post_fb==='1';$('#ptt').checked=s.auto_post_tiktok==='1';}catch{}
+  $$('#modes button').forEach(x=>x.classList.toggle('on',x.dataset.m===mode));
+  const [v,id]=(location.hash.slice(1).split('?')[0]||'create').split('/');
+  if(location.hash.includes('tt=ok'))toast('เชื่อม TikTok สำเร็จ ✅');
+  if(location.hash.includes('tt=fail'))toast('เชื่อม TikTok ไม่สำเร็จ');
+  go(['create','jobs','settings','detail'].includes(v)?v:'create',id?+id:null);
+}
+$('#pw').addEventListener('keydown',e=>e.key==='Enter'&&login());
+start();
+</script>
+</body>
+</html>

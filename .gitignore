@@ -1,0 +1,6 @@
+data/*
+!data/music/
+data/music/*
+!data/music/.keep
+.env
+__pycache__/

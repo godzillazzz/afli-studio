@@ -1,0 +1,9 @@
+{
+  "name": "Afli Studio",
+  "short_name": "Afli",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f6f4f2",
+  "theme_color": "#ee4d2d",
+  "icons": [{"src": "icon.svg", "sizes": "any", "type": "image/svg+xml"}]
+}

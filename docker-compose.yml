@@ -1,0 +1,10 @@
+services:
+  afli:
+    build: .
+    container_name: afli-studio
+    restart: unless-stopped
+    ports:
+      - "${PORT:-8088}:8088"
+    env_file: .env
+    volumes:
+      - ./data:/data
