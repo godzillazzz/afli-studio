@@ -71,7 +71,15 @@ def process(job_id):
 
     # 2) script ----------------------------------------------------------
     script = job.get("script") if job.get("reuse_script") else None
-    if not script or not script.get("lines"):
+    if job.get("reuse_script") == 2 and script and script.get("lines"):
+        # owner wrote the voice-over: keep his lines, let AI write only caption/hashtags/title
+        step(job_id, "ใช้บทพากย์ที่คุณเขียนเอง (AI เขียนแค่แคปชัน)", 15)
+        own = script["lines"]
+        script = scriptgen.generate(product, s)
+        script["lines"] = own
+        cost += 0.003
+        db.update_job(job_id, reuse_script=1)
+    elif not script or not script.get("lines"):
         step(job_id, "AI กำลังเขียนสคริปต์", 15)
         script = scriptgen.generate(product, s)
         cost += 0.003
@@ -119,7 +127,7 @@ def process(job_id):
     step(job_id, "กำลังตัดต่อวิดีโอ", 60)
     plan, t, k = [], 0.0, 0
     for path, _ in clips:
-        dur = min(max(tts.duration(path), 2.0), 6.0, total - t)
+        dur = min(max(tts.duration(path), 2.0), 10.0, total - t)  # Flow/Veo clips are ~8 s: use them whole
         if dur < 1.0:
             break
         plan.append(("video", path, dur))

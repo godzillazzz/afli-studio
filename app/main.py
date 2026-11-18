@@ -73,14 +73,17 @@ def job(job_id: int):
 
 @app.post("/api/jobs")
 async def create(url: str = Form(""), mode: str = Form("slideshow"), name: str = Form(""), price: str = Form(""),
-                 post_fb: str = Form("0"), post_tiktok: str = Form("0"),
+                 post_fb: str = Form("0"), post_tiktok: str = Form("0"), script: str = Form(""),
                  files: list[UploadFile] = File(default=[])):
     url = url.strip()
     if not url and not name:
         raise HTTPException(400, "กรุณาใส่ลิงก์สินค้า หรือชื่อสินค้า")
     product = {"name": name.strip() or None, "price": price.strip() or None, "images": [], "description": ""}
+    lines = [l.strip() for l in script.splitlines() if l.strip()]
     job_id = db.create_job(url=url, mode=mode, product=json.dumps(product, ensure_ascii=False),
-                           post_fb=int(post_fb == "1"), post_tiktok=int(post_tiktok == "1"), status="uploading")
+                           post_fb=int(post_fb == "1"), post_tiktok=int(post_tiktok == "1"), status="uploading",
+                           script=json.dumps({"lines": lines}, ensure_ascii=False) if lines else None,
+                           reuse_script=2 if lines else 0)
     up = os.path.join(pipeline.job_dir(job_id), "uploads")
     os.makedirs(up, exist_ok=True)
     for i, f in enumerate(files):

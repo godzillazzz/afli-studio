@@ -27,7 +27,7 @@ PROMPT = """คุณคือนักเขียนสคริปต์ค�
  "caption": "แคปชันโพสต์ 1-2 ประโยค มีอีโมจิได้",
  "hashtags": ["#...", "#..."],
  "short_title": "ชื่อสินค้าแบบสั้น ไม่เกิน 18 ตัวอักษร",
- "motion_prompt": "English prompt (2-3 sentences) for an image-to-video model like Google Veo/Flow: describe THIS product from the photo being showcased in a vertical 9:16 ad shot, camera motion, lighting, setting that fits the product, hands using it if natural; no text, no logos, no talking"}}"""
+ "motion_prompt": "English prompt (2-3 sentences) for an image-to-video model like Google Veo/Flow: describe THIS product from the photo being showcased in a vertical 9:16 ad shot, camera motion, lighting, setting that fits the product, hands using it if natural; no text, no logos, no dialogue, no speech, no one talking to camera (Thai voice-over is added later)"}}"""
 
 
 def _template(product):

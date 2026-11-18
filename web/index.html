@@ -83,7 +83,11 @@ a{color:var(--brand)}
       <button data-m="mix">✨ ผสม AI<small>~10 บาท/คลิป</small></button>
       <button data-m="ai">🤖 AI ล้วน<small>~20 บาท/คลิป</small></button>
     </div>
-    <details style="margin-top:12px"><summary>➕ ใส่ข้อมูลเอง / อัปโหลดรูปหรือคลิป (ถ้าดึงจาก Shopee ไม่ได้)</summary>
+    <details style="margin-top:12px"><summary>🎙️ เขียนบทพากย์เอง (ไม่ใส่ = AI เขียนให้)</summary>
+      <textarea id="ownScript" rows="7" placeholder="บรรทัดละ 1 ประโยค ไม่เกิน 20 ตัวอักษร เช่น&#10;หยุดก่อน! ผ้าหอมนานทั้งวัน&#10;น้ำยาซักผ้าไฟน์ไลน์ สูตรเข้มข้น&#10;ขวดใหญ่ 1250 มล. ใช้ได้นาน&#10;ราคาแค่ 128 บาท&#10;กดตะกร้าเลย!"></textarea>
+      <div class="hint">บรรทัดแรกกับบรรทัดสุดท้ายจะขึ้นเป็นซับสีเหลือง เสียงในคลิปจาก Flow จะถูกตัดออก แล้วใส่เสียงไทยตามบทนี้แทน</div>
+    </details>
+    <details style="margin-top:4px"><summary>➕ อัปโหลดคลิปจาก Flow / รูป / ใส่ชื่อสินค้าเอง</summary>
       <label>ชื่อสินค้า</label><input id="name" placeholder="เช่น พัดลมพกพา ชาร์จ USB">
       <label>ราคา (บาท)</label><input id="price" inputmode="numeric" placeholder="เช่น 199">
       <label>รูป/คลิปสินค้า (เลือกได้หลายไฟล์)</label><input id="files" type="file" multiple accept="image/*,video/*">
@@ -219,11 +223,12 @@ async function createJob(){
   const fd=new FormData();
   fd.append('url',$('#url').value.trim()); fd.append('mode',mode);
   fd.append('name',$('#name').value); fd.append('price',$('#price').value);
+  fd.append('script',$('#ownScript').value);
   fd.append('post_fb',$('#pfb').checked?'1':'0'); fd.append('post_tiktok',$('#ptt').checked?'1':'0');
   for(const f of $('#files').files) fd.append('files',f);
   $('#goBtn').disabled=true; $('#createErr').textContent='';
   try{const j=await api('/api/jobs',{method:'POST',body:fd});
-    $('#url').value='';$('#name').value='';$('#price').value='';$('#files').value='';
+    $('#url').value='';$('#name').value='';$('#ownScript').value='';$('#price').value='';$('#files').value='';
     toast('เริ่มสร้างคลิปแล้ว'); go('detail',j.id);
   }catch(e){$('#createErr').textContent=e.message}
   $('#goBtn').disabled=false;
