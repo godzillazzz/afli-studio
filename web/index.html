@@ -114,6 +114,22 @@ a{color:var(--brand)}
   <div id="detail"></div>
 </section>
 
+<!-- LIBRARY -->
+<section id="v-library" class="hide">
+  <div class="card">
+    <h2>🎞️ คลังคลิปสินค้า</h2>
+    <div class="hint">อัปโหลดคลิปจาก Flow (หรือคลิปที่ถ่ายเอง) ไว้ครั้งเดียว ระบบจะใช้คลิปเหล่านี้ซ้ำให้ทุกคลิปของสินค้านี้ ไม่ต้องจ่ายค่า AI อีก</div>
+    <label>ชื่อสินค้า (ใช้เป็นรหัสคลัง)</label>
+    <input id="libName" placeholder="เช่น พัดลมพกพา ชาร์จ USB">
+    <label>คลิปวิดีโอ (เลือกได้หลายไฟล์)</label>
+    <input id="libFiles" type="file" multiple accept="video/*">
+    <div style="height:10px"></div>
+    <button class="btn" onclick="libUpload()">⬆️ อัปโหลดเข้าคลัง</button>
+    <div class="hint">ชื่อสินค้าต้องตรงกับตอนสร้างคลิป (ระบบเทียบจากชื่อหรือรหัสสินค้า Shopee) — ง่ายสุดคือกดปุ่ม "บันทึกคลิปเข้าคลังสินค้านี้" ในหน้างาน</div>
+  </div>
+  <div id="libList"></div>
+</section>
+
 <!-- SETTINGS -->
 <section id="v-settings" class="hide">
   <div class="card"><h2>🔑 Google Gemini API Key</h2>
@@ -220,6 +236,7 @@ a{color:var(--brand)}
 <nav id="nav" class="hide">
   <button data-v="create"><b>🎬</b>สร้างคลิป</button>
   <button data-v="jobs"><b>📋</b>งานทั้งหมด</button>
+  <button data-v="library"><b>🎞️</b>คลังคลิป</button>
   <button data-v="settings"><b>⚙️</b>ตั้งค่า</button>
 </nav>
 <div class="toast" id="toast"></div>
@@ -253,6 +270,7 @@ function go(v,id){
   if(v==='jobs'){loadJobs();timer=setInterval(loadJobs,3000)}
   if(v==='detail'){api('/api/providers').then(p=>{provs=p;if($('#revModes'))loadDetail(true)}).catch(()=>{});loadDetail(true);timer=setInterval(()=>loadDetail(false),3000)}
   if(v==='settings')loadSettings();
+  if(v==='library')loadLibrary();
   location.hash=v+(id?'/'+id:'');
 }
 $$('#nav button').forEach(b=>b.onclick=()=>go(b.dataset.v));
@@ -347,6 +365,12 @@ async function loadDetail(force){
     <label>คลิปจาก Flow (เลือกได้หลายคลิป)</label><input id="flowFiles" type="file" multiple accept="video/*">
     <div style="height:8px"></div><button class="btn" onclick="addFlow()">🎬 ใส่คลิป Flow แล้วสร้างวิดีโอใหม่</button>
   </div>`:''}
+  ${j.status!=='running'&&j.status!=='queued'?`
+  <div class="card">
+    <h2>🎞️ คลังคลิปสินค้า</h2>
+    <div class="hint">เก็บคลิปที่อัปโหลดในงานนี้ไว้ในคลังของสินค้านี้ ครั้งต่อไประบบจะใช้คลิปซ้ำให้อัตโนมัติ ไม่ต้องจ่ายค่า AI วิดีโอ</div>
+    <button class="btn2" style="width:100%" onclick="saveToLib()">💾 บันทึกคลิปเข้าคลังสินค้านี้</button>
+  </div>`:''}
   ${j.script?.lines&&j.status!=='review'?`
   <div class="card">
     <h2>📝 สคริปต์เสียงพากย์</h2>
@@ -417,6 +441,47 @@ async function fixInfo(){
 async function retry(){await post(`/api/jobs/${detailId}/retry`);loadDetail(true)}
 async function del(){if(!confirm('ลบงานนี้?'))return;await api('/api/jobs/'+detailId,{method:'DELETE'});go('jobs')}
 
+let libItems=[];
+function libKey(n){return (n||'').normalize('NFC').trim().toLowerCase().replace(/[^0-9a-zก-๙._-]+/g,'-').replace(/-{2,}/g,'-').replace(/^[-._]+|[-._]+$/g,'').slice(0,60)}
+async function loadLibrary(){
+  try{libItems=await api('/api/library')}catch(e){return}
+  $('#libList').innerHTML=libItems.length?libItems.map((p,i)=>`
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+        <div style="font-weight:600">${esc(p.product_name||p.product_key)}</div><span class="badge">${p.count} คลิป</span>
+      </div>
+      <div class="hint">รหัส: ${esc(p.product_key)}</div>
+      ${(p.clips||[]).map(c=>`<div class="sw"><span style="font-size:14px;overflow:hidden;text-overflow:ellipsis">🎞️ ${esc(c.filename)}</span>
+        <button class="btn2" style="padding:6px 12px;flex:none" onclick="libDel(${i},${c.id})">ลบ</button></div>`).join('')}
+      <label>เพิ่มคลิปในสินค้านี้</label>
+      <input id="lf-${i}" type="file" multiple accept="video/*">
+      <div style="height:8px"></div>
+      <button class="btn2" style="width:100%" onclick="libUpload(${i})">⬆️ อัปโหลดเพิ่ม</button>
+    </div>`).join(''):'<div class="card hint">ยังไม่มีคลิปในคลัง — อัปโหลดด้านบน หรือกดปุ่มในหน้างาน</div>';
+}
+async function libUpload(idx){
+  let key,name,files;
+  if(idx===undefined){
+    name=$('#libName').value.trim(); if(!name){toast('ใส่ชื่อสินค้าก่อน');return}
+    key=libKey(name); files=$('#libFiles').files;
+  }else{
+    const p=libItems[idx]; key=p.product_key; name=p.product_name||key; files=$('#lf-'+idx).files;
+  }
+  if(!files||!files.length){toast('เลือกคลิปก่อน');return}
+  const fd=new FormData(); fd.append('name',name); for(const f of files)fd.append('files',f);
+  toast('กำลังอัปโหลด... อย่าเพิ่งปิดหน้านี้');
+  try{const r=await api(`/api/library/${encodeURIComponent(key)}/clips`,{method:'POST',body:fd});
+    toast('เพิ่ม '+r.saved.length+' คลิปแล้ว'); $('#libName').value=''; $('#libFiles').value=''; loadLibrary();
+  }catch(e){toast(e.message)}
+}
+async function libDel(i,id){
+  const p=libItems[i]; if(!p||!confirm('ลบคลิปนี้ออกจากคลัง?'))return;
+  try{await api(`/api/library/${encodeURIComponent(p.product_key)}/clips/${id}`,{method:'DELETE'});toast('ลบแล้ว');loadLibrary()}catch(e){toast(e.message)}
+}
+async function saveToLib(){
+  try{const r=await post(`/api/jobs/${detailId}/save-to-library`);toast('บันทึก '+r.saved.length+' คลิปเข้าคลังแล้ว')}catch(e){toast(e.message)}
+}
+
 async function loadSettings(){
   settings=await api('/api/settings');
   $$('#v-settings [data-k]').forEach(el=>{const v=settings[el.dataset.k]??'';el.type==='checkbox'?el.checked=v==='1':el.value=v});
@@ -438,7 +503,7 @@ async function start(){
   const [v,id]=(location.hash.slice(1).split('?')[0]||'create').split('/');
   if(location.hash.includes('tt=ok'))toast('เชื่อม TikTok สำเร็จ ✅');
   if(location.hash.includes('tt=fail'))toast('เชื่อม TikTok ไม่สำเร็จ');
-  go(['create','jobs','settings','detail'].includes(v)?v:'create',id?+id:null);
+  go(['create','jobs','settings','detail','library'].includes(v)?v:'create',id?+id:null);
 }
 $('#pw').addEventListener('keydown',e=>e.key==='Enter'&&login());
 start();

@@ -4,3 +4,4 @@ data/music/*
 !data/music/.keep
 .env
 __pycache__/
+.venv/

@@ -82,9 +82,18 @@ def init():
             post_fb INTEGER DEFAULT 0, post_tiktok INTEGER DEFAULT 0,
             fb_status TEXT, tt_status TEXT, log TEXT DEFAULT '',
             reuse_script INTEGER DEFAULT 0)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS library (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            product_key TEXT NOT NULL,
+            product_name TEXT,
+            filename TEXT NOT NULL,
+            created_at REAL)""")
+        c.execute("CREATE INDEX IF NOT EXISTS idx_library_key ON library(product_key)")
         cols = {r[1] for r in c.execute("PRAGMA table_info(jobs)")}
         if "review" not in cols:  # added later: 1 = stop after the script so the owner can check it
             c.execute("ALTER TABLE jobs ADD COLUMN review INTEGER DEFAULT 0")
+        if "product_key" not in cols:  # added later: stable product id for the clip library
+            c.execute("ALTER TABLE jobs ADD COLUMN product_key TEXT")
         # jobs interrupted by a restart go back to the queue
         c.execute("UPDATE jobs SET status='queued' WHERE status='running'")
 
@@ -156,6 +165,40 @@ def next_queued():
 def delete_job(job_id):
     with _lock, conn() as c:
         c.execute("DELETE FROM jobs WHERE id=?", (job_id,))
+
+
+# ---------------- clip library ----------------
+def library_add(product_key, product_name, filename):
+    with _lock, conn() as c:
+        cur = c.execute("INSERT INTO library (product_key, product_name, filename, created_at) VALUES (?,?,?,?)",
+                        (product_key, product_name, filename, time.time()))
+        return cur.lastrowid
+
+
+def library_clips(product_key):
+    with conn() as c:
+        rows = c.execute("SELECT * FROM library WHERE product_key=? ORDER BY id", (product_key,)).fetchall()
+    return [_row(r) for r in rows]
+
+
+def library_clip(clip_id):
+    with conn() as c:
+        r = c.execute("SELECT * FROM library WHERE id=?", (clip_id,)).fetchone()
+    return _row(r) if r else None
+
+
+def library_delete(clip_id):
+    with _lock, conn() as c:
+        c.execute("DELETE FROM library WHERE id=?", (clip_id,))
+
+
+def library_products():
+    """All products that have clips, newest first, with their clip count."""
+    with conn() as c:
+        rows = c.execute("""SELECT product_key, MAX(product_name) AS product_name, COUNT(*) AS clips,
+                                   MAX(created_at) AS created_at
+                            FROM library GROUP BY product_key ORDER BY created_at DESC""").fetchall()
+    return [dict(r) for r in rows]
 
 
 def _row(r):

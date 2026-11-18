@@ -8,7 +8,7 @@ import threading
 import time
 import traceback
 
-from . import aivideo, db, posting, scriptgen, shopee, tts, video
+from . import aivideo, db, library, posting, scriptgen, shopee, tts, video
 
 VIDEO_EXT = (".mp4", ".mov", ".m4v", ".webm")
 IMG_EXT = (".jpg", ".jpeg", ".png", ".webp")
@@ -36,6 +36,8 @@ def step(job_id, text, pct):
 
 def process(job_id):
     job = db.get_job(job_id)
+    if not job:
+        raise RuntimeError(f"ไม่พบงาน #{job_id}")
     s = db.get_settings()
     d = job_dir(job_id)
     up_dir = os.path.join(d, "uploads")
@@ -52,6 +54,12 @@ def process(job_id):
         fetched.update({k: v for k, v in product.items() if v})  # user-typed values win
         product = fetched
     db.update_job(job_id, product=product)
+    # stable product id: same product on later jobs reuses the clip library
+    product_key = job.get("product_key") or library.product_key(job.get("url") or "",
+                                                              (product or {}).get("name") or "")
+    if product_key and product_key != job.get("product_key"):
+        db.update_job(job_id, product_key=product_key)
+        job["product_key"] = product_key
 
     media = []
     img_dir = os.path.join(d, "img")
@@ -68,7 +76,12 @@ def process(job_id):
     user_images = [f for f in uploads if f.lower().endswith(IMG_EXT)]
     user_videos = [f for f in uploads if f.lower().endswith(VIDEO_EXT)]
     images = user_images + media
-    if not images and not user_videos:
+    lib_clips = []
+    if not user_videos and product_key:
+        lib_clips = library.clip_paths(product_key)  # clips saved for this product earlier
+        if lib_clips:
+            db.append_log(job_id, f"ใช้คลิปจากคลังสินค้า: {len(lib_clips)} คลิป")
+    if not images and not user_videos and not lib_clips:
         raise RuntimeError("ไม่มีรูปหรือคลิปสินค้าเลย กรุณาอัปโหลดรูปสินค้าอย่างน้อย 1 รูป")
 
     # 2) script ----------------------------------------------------------
@@ -123,7 +136,9 @@ def process(job_id):
     elif mode == "mix":
         n_ai = 1
     key_name = "gemini_api_key" if s.get("ai_provider") == "veo" else "fal_key"
-    if n_ai and user_videos:
+    if n_ai and lib_clips:
+        n_ai = 0  # clips already in the product library: no paid AI video needed
+    elif n_ai and user_videos:
         n_ai = 0  # owner supplied clips (e.g. from Google Flow): use them, no paid AI
         db.append_log(job_id, "ใช้คลิปที่อัปโหลด (เช่นจาก Google Flow) แทนการสร้างคลิป AI")
     elif n_ai and not s.get(key_name):
@@ -134,7 +149,7 @@ def process(job_id):
         out = os.path.join(seg_dir, f"ai{i}.mp4")
         cost += aivideo.image_to_video(img, script.get("motion_prompt"), out, s)
         clips.append((out, "video"))
-    clips += [(v, "video") for v in user_videos]
+    clips += [(v, "video") for v in list(user_videos) + list(lib_clips)]
     still = images[n_ai:] or images
 
     step(job_id, "กำลังตัดต่อวิดีโอ", 60)

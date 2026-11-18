@@ -11,7 +11,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import db, pipeline, posting, scriptgen
+from . import db, library, pipeline, posting, scriptgen
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "admin")
 WEB_DIR = os.path.join(os.path.dirname(__file__), "..", "web")
@@ -246,6 +246,104 @@ def get_thumb(job_id: int):
     if not j or not j.get("thumb") or not os.path.exists(j["thumb"]):
         raise HTTPException(404)
     return FileResponse(j["thumb"], media_type="image/jpeg")
+
+
+# ---------------- clip library ----------------
+def _lib_name(key):
+    rows = db.library_clips(key)
+    return (rows[0]["product_name"] if rows else key) or key
+
+
+def _lib_product(key):
+    return {"product_key": key, "product_name": _lib_name(key),
+            "clips": [{"id": c["id"], "filename": c["filename"], "created_at": c["created_at"]}
+                      for c in db.library_clips(key)]}
+
+
+@app.get("/api/library")
+def library_list():
+    out = []
+    for p in db.library_products():
+        item = _lib_product(p["product_key"])
+        item["count"] = len(item["clips"])
+        out.append(item)
+    return out
+
+
+@app.get("/api/library/{key}")
+def library_one(key: str):
+    try:
+        key = library.safe_key(key)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    item = _lib_product(key)
+    item["count"] = len(item["clips"])
+    return item
+
+
+@app.post("/api/library/{key}/clips")
+async def library_upload(key: str, files: list[UploadFile] = File(default=[]),
+                         name: str = Form("")):
+    try:
+        key = library.safe_key(key)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    saved, errors = [], []
+    tmp = os.path.join(db.DATA_DIR, "tmp")
+    os.makedirs(tmp, exist_ok=True)
+    for f in files:
+        if not f.filename:
+            continue
+        try:
+            fname = library.safe_filename(f.filename)
+        except ValueError as e:
+            errors.append(f"{os.path.basename(f.filename)}: {e}")
+            continue
+        p = os.path.join(tmp, fname)
+        with open(p, "wb") as out:
+            shutil.copyfileobj(f.file, out)
+        try:
+            saved.append(library.save_clip(key, name.strip() or _lib_name(key), fname, p))
+        finally:
+            try:
+                os.remove(p)
+            except OSError:
+                pass
+    if not saved and errors:
+        raise HTTPException(400, "; ".join(errors))
+    return {"ok": True, "saved": saved, "errors": errors, "count": len(db.library_clips(key))}
+
+
+@app.delete("/api/library/{key}/clips/{clip_id}")
+def library_remove(key: str, clip_id: int):
+    try:
+        ok = library.delete_clip(key, clip_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
+    if not ok:
+        raise HTTPException(404, "ไม่พบคลิปนี้")
+    return {"ok": True, "count": len(db.library_clips(library.safe_key(key)))}
+
+
+@app.post("/api/jobs/{job_id}/save-to-library")
+def save_job_to_library(job_id: int):
+    """Copy this job's uploaded video clips into the product's library."""
+    j = db.get_job(job_id)
+    if not j:
+        raise HTTPException(404)
+    product = j.get("product") or {}
+    key = j.get("product_key") or library.product_key(j.get("url") or "", (product or {}).get("name") or "")
+    if not key:
+        raise HTTPException(400, "ยังไม่รู้จักสินค้านี้ — ใส่ชื่อสินค้าหรือลิงก์ก่อน")
+    up = os.path.join(pipeline.job_dir(job_id), "uploads")
+    clips = [f for f in sorted(os.listdir(up)) if f.lower().endswith(library.VIDEO_EXT)] if os.path.isdir(up) else []
+    if not clips:
+        raise HTTPException(400, "งานนี้ไม่มีคลิปวิดีโอที่อัปโหลดไว้")
+    saved = [library.save_clip(key, product.get("name") or key, f, os.path.join(up, f)) for f in clips]
+    if not j.get("product_key"):
+        db.update_job(job_id, product_key=key)
+    db.append_log(job_id, f"บันทึกคลิปเข้าคลังสินค้า: {len(saved)} คลิป")
+    return {"ok": True, "product_key": key, "saved": saved, "count": len(db.library_clips(key))}
 
 
 # ---------------- settings ----------------
