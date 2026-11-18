@@ -11,7 +11,7 @@ from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
-from . import db, pipeline, posting
+from . import db, pipeline, posting, scriptgen
 
 APP_PASSWORD = os.environ.get("APP_PASSWORD", "admin")
 WEB_DIR = os.path.join(os.path.dirname(__file__), "..", "web")
@@ -55,6 +55,7 @@ def me():
 def _public(job):
     j = {k: v for k, v in job.items() if k not in ("video", "thumb")}
     j["has_video"] = bool(job.get("video") and os.path.exists(job["video"]))
+    j["has_voice"] = os.path.exists(os.path.join(db.DATA_DIR, "jobs", str(job["id"]), "preview", "voice.m4a"))
     return j
 
 
@@ -74,7 +75,7 @@ def job(job_id: int):
 @app.post("/api/jobs")
 async def create(url: str = Form(""), mode: str = Form("slideshow"), name: str = Form(""), price: str = Form(""),
                  post_fb: str = Form("0"), post_tiktok: str = Form("0"), script: str = Form(""),
-                 files: list[UploadFile] = File(default=[])):
+                 review: str = Form(""), files: list[UploadFile] = File(default=[])):
     url = url.strip()
     if not url and not name:
         raise HTTPException(400, "กรุณาใส่ลิงก์สินค้า หรือชื่อสินค้า")
@@ -83,7 +84,8 @@ async def create(url: str = Form(""), mode: str = Form("slideshow"), name: str =
     job_id = db.create_job(url=url, mode=mode, product=json.dumps(product, ensure_ascii=False),
                            post_fb=int(post_fb == "1"), post_tiktok=int(post_tiktok == "1"), status="uploading",
                            script=json.dumps({"lines": lines}, ensure_ascii=False) if lines else None,
-                           reuse_script=2 if lines else 0)
+                           reuse_script=2 if lines else 0,
+                           review=int((review or db.get_settings().get("review_first")) == "1"))
     up = os.path.join(pipeline.job_dir(job_id), "uploads")
     os.makedirs(up, exist_ok=True)
     for i, f in enumerate(files):
@@ -134,9 +136,76 @@ async def fix_info(job_id: int, name: str = Form(""), price: str = Form(""),
     return {"ok": True}
 
 
+def _lines(body):
+    return [str(l).strip() for l in body.get("lines") or [] if str(l).strip()]
+
+
+@app.get("/api/providers")
+def providers():
+    s = db.get_settings()
+    return {"default": s.get("llm_provider") or "auto",
+            "list": [{"id": p, "label": scriptgen.PROVIDERS[p][0]} for p in scriptgen.available(s)]}
+
+
+@app.post("/api/jobs/{job_id}/rewrite")
+def rewrite(job_id: int, body: dict):
+    """Ask an AI (owner's choice) for a new script, without touching the video."""
+    j = db.get_job(job_id)
+    if not j:
+        raise HTTPException(404)
+    try:
+        script = scriptgen.generate(j.get("product") or {}, db.get_settings(), body.get("provider"))
+    except Exception as e:
+        raise HTTPException(400, str(e))
+    db.update_job(job_id, script=script, caption=pipeline.build_caption(script, j.get("product") or {}, j["url"]))
+    db.append_log(job_id, f"เขียนบทใหม่โดย: {script.get('_by', '')}")
+    return {"ok": True, "script": script}
+
+
+@app.post("/api/jobs/{job_id}/voice")
+def make_voice_preview(job_id: int, body: dict):
+    j = db.get_job(job_id)
+    lines = _lines(body)
+    if not j or not lines:
+        raise HTTPException(400, "ยังไม่มีบทพูด")
+    script = j.get("script") or {}
+    script["lines"] = lines
+    db.update_job(job_id, script=script)
+    try:
+        engine = pipeline.voice_preview(job_id, lines)
+    except Exception as e:
+        raise HTTPException(400, f"สร้างเสียงไม่สำเร็จ: {e}")
+    return {"ok": True, "engine": engine}
+
+
+@app.get("/api/jobs/{job_id}/voice")
+def get_voice_preview(job_id: int):
+    p = os.path.join(pipeline.job_dir(job_id), "preview", "voice.m4a")
+    if not os.path.exists(p):
+        raise HTTPException(404)
+    return FileResponse(p, media_type="audio/mp4")
+
+
+@app.post("/api/jobs/{job_id}/approve")
+def approve(job_id: int, body: dict):
+    """Owner checked the script: render the video with exactly these lines."""
+    j = db.get_job(job_id)
+    lines = _lines(body)
+    if not j or not lines:
+        raise HTTPException(400, "ยังไม่มีบทพูด")
+    script = j.get("script") or {}
+    script["lines"] = lines
+    fields = dict(script=script, reuse_script=1, review=0, status="queued", step="รอคิว", progress=0, error=None)
+    if body.get("mode") in ("slideshow", "mix", "ai"):
+        fields["mode"] = body["mode"]
+    db.update_job(job_id, **fields)
+    return {"ok": True}
+
+
 @app.post("/api/jobs/{job_id}/retry")
 def retry(job_id: int):
-    db.update_job(job_id, status="queued", step="รอคิว", progress=0, error=None, reuse_script=0)
+    review = int(db.get_settings().get("review_first") == "1")
+    db.update_job(job_id, status="queued", step="รอคิว", progress=0, error=None, reuse_script=0, review=review)
     return {"ok": True}
 
 

@@ -1,5 +1,7 @@
 """Job pipeline: product -> script -> voice -> visuals -> video -> post."""
 import glob
+import hashlib
+import json
 import os
 import shutil
 import threading
@@ -83,21 +85,31 @@ def process(job_id):
         step(job_id, "AI กำลังเขียนสคริปต์", 15)
         script = scriptgen.generate(product, s)
         cost += 0.003
+        db.append_log(job_id, f"บทเขียนโดย: {script.get('_by', '')}")
+        if script.get("_note"):
+            db.append_log(job_id, "AI ตัวแรกใช้ไม่ได้: " + script["_note"])
     caption = build_caption(script, product, job["url"])
     db.update_job(job_id, script=script, caption=caption)
+    if job.get("review"):
+        db.update_job(job_id, status="review", step="รอตรวจบท ➜ แก้ได้ แล้วกดสร้างคลิป", progress=20)
+        db.append_log(job_id, "หยุดรอให้ตรวจบทก่อน")
+        return
 
     # 3) voice -----------------------------------------------------------
     step(job_id, "กำลังสร้างเสียงพากย์", 25)
     vdir = os.path.join(d, "voice")
     shutil.rmtree(vdir, ignore_errors=True)
     os.makedirs(vdir)
-    tts.last_engine.clear()
-    voice, timings, total = tts.speak_script(script["lines"], s, vdir, video.build_voice)
-    db.append_log(job_id, f"เสียงพากย์: {tts.last_engine.get('name', '')}")
-    if tts.last_engine.get("fallback_reason"):
-        db.append_log(job_id, "Gemini TTS ใช้ไม่ได้ เลยใช้เสียงสำรอง: " + tts.last_engine["fallback_reason"])
-    if s.get("tts_engine") == "gemini":
-        cost += 0.008
+    pv = load_preview(job_id, script["lines"], s)
+    if pv:  # owner already listened to this exact voice: reuse it, no second TTS charge
+        voice = os.path.join(vdir, "voice.m4a")
+        shutil.copy(pv["voice"], voice)
+        timings, total = pv["timings"], pv["total"]
+        db.append_log(job_id, f"เสียงพากย์: {pv['engine']} (ใช้เสียงที่ฟังตัวอย่างไว้)")
+    else:
+        voice, timings, total, engine = make_voice(job_id, script["lines"], s, vdir)
+        if s.get("tts_engine") == "gemini":
+            cost += 0.008
 
     # 4) visuals ---------------------------------------------------------
     seg_dir = os.path.join(d, "seg")
@@ -173,6 +185,51 @@ def process(job_id):
         do_post_fb(job_id)
     if job["post_tiktok"]:
         do_post_tiktok(job_id)
+
+
+def voice_key(lines, s):
+    keys = ("tts_engine", "gemini_voice", "gemini_tts_model", "tts_style", "tts_voice", "tts_rate")
+    raw = json.dumps([lines] + [s.get(k) for k in keys], ensure_ascii=False)
+    return hashlib.sha1(raw.encode()).hexdigest()
+
+
+_voice_lock = threading.Lock()  # tts.last_engine is shared between the worker and voice previews
+
+
+def make_voice(job_id, lines, s, out_dir):
+    with _voice_lock:
+        tts.last_engine.clear()
+        voice, timings, total = tts.speak_script(lines, s, out_dir, video.build_voice)
+        engine = tts.last_engine.get("name", "")
+        reason = tts.last_engine.get("fallback_reason")
+    db.append_log(job_id, f"เสียงพากย์: {engine}")
+    if reason:
+        db.append_log(job_id, "Gemini TTS ใช้ไม่ได้ เลยใช้เสียงสำรอง: " + reason)
+    return voice, timings, total, engine
+
+
+def voice_preview(job_id, lines):
+    """Make the voice-over only (no video) so the owner can listen before rendering. Returns engine name."""
+    s = db.get_settings()
+    pdir = os.path.join(job_dir(job_id), "preview")
+    shutil.rmtree(pdir, ignore_errors=True)
+    os.makedirs(pdir)
+    voice, timings, total, engine = make_voice(job_id, lines, s, pdir)
+    with open(os.path.join(pdir, "preview.json"), "w") as f:
+        json.dump({"key": voice_key(lines, s), "voice": voice, "timings": timings, "total": total,
+                   "engine": engine}, f, ensure_ascii=False)
+    return engine
+
+
+def load_preview(job_id, lines, s):
+    try:
+        with open(os.path.join(job_dir(job_id), "preview", "preview.json")) as f:
+            pv = json.load(f)
+        if pv["key"] == voice_key(lines, s) and os.path.exists(pv["voice"]):
+            return pv
+    except Exception:
+        pass
+    return None
 
 
 def _uploads(up_dir):

@@ -45,7 +45,7 @@ nav button.on{color:var(--brand)}
 .bar{height:6px;background:#f1ece8;border-radius:6px;margin-top:8px;overflow:hidden}
 .bar i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));transition:width .4s}
 .badge{display:inline-block;font-size:12px;padding:2px 8px;border-radius:20px;background:#f1ece8;margin-right:4px}
-.b-done{background:#dcfce7;color:#166534}.b-error{background:#fee2e2;color:#991b1b}.b-running,.b-queued,.b-uploading{background:#fff1e6;color:#9a3412}
+.b-done{background:#dcfce7;color:#166534}.b-review{background:#e0f2fe;color:#075985}.b-error{background:#fee2e2;color:#991b1b}.b-running,.b-queued,.b-uploading{background:#fff1e6;color:#9a3412}
 video{width:100%;max-height:70vh;border-radius:12px;background:#000}
 .hint{font-size:13px;color:var(--mute);line-height:1.5;margin-top:6px}
 .err{color:var(--err);font-size:14px;white-space:pre-wrap}
@@ -96,12 +96,13 @@ a{color:var(--brand)}
     <div style="margin-top:10px">
       <div class="sw"><span>📘 โพสต์ลง Facebook อัตโนมัติ</span><input type="checkbox" id="pfb"></div>
       <div class="sw"><span>🎵 ส่งเข้าแอป TikTok อัตโนมัติ</span><input type="checkbox" id="ptt"></div>
+      <div class="sw"><span>📝 ให้ดูบทพูดก่อนสร้างวิดีโอ</span><input type="checkbox" id="prev"></div>
     </div>
     <div style="height:10px"></div>
     <button class="btn" id="goBtn" onclick="createJob()">🎬 สร้างคลิป</button>
     <div id="createErr" class="err"></div>
   </div>
-  <div class="hint" style="padding:0 6px">ระบบจะเขียนสคริปต์ พากย์เสียงไทย ใส่ซับไตเติล และตัดต่อให้อัตโนมัติ ใช้เวลาประมาณ 1–3 นาที (โหมด AI 3–10 นาที)</div>
+  <div class="hint" style="padding:0 6px">ถ้าติ๊ก "ให้ดูบทพูดก่อน" ระบบจะเขียนบทให้ดูก่อน (ประมาณ 20 วินาที) แก้ได้ ฟังเสียงตัวอย่างได้ แล้วกดปุ่มเดียวให้สร้างคลิปจนเสร็จ<br>สร้างวิดีโอใช้เวลาประมาณ 1–3 นาที (โหมด AI 3–10 นาที)</div>
 </section>
 
 <!-- JOBS -->
@@ -150,9 +151,28 @@ a{color:var(--brand)}
     </div>
     <div class="hint">เพลงประกอบ: ใส่ไฟล์ .mp3 ไว้ในโฟลเดอร์ <b>data/music</b> บนเซิร์ฟเวอร์ ระบบจะสุ่มใช้เอง</div>
   </div>
-  <div class="card"><h2>🧠 AI เขียนสคริปต์ (Claude)</h2>
-    <label>Anthropic API Key</label><input data-k="anthropic_api_key" placeholder="sk-ant-...">
-    <div class="hint">สมัครที่ <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> ค่าใช้จ่ายประมาณ 0.1 บาท/คลิป ถ้าไม่ใส่ ระบบจะใช้สคริปต์แม่แบบแทน</div>
+  <div class="card"><h2>🧠 AI เขียนบทพูด</h2>
+    <label>ใช้ AI ตัวไหนเป็นหลัก</label>
+    <select data-k="llm_provider">
+      <option value="auto">อัตโนมัติ — ใช้ตัวที่มีคีย์ ถ้าตัวแรกล่มจะสลับให้เอง</option>
+      <option value="claude">Claude</option>
+      <option value="openai">ChatGPT</option>
+      <option value="gemini">Gemini</option>
+      <option value="opencode">OpenCode</option>
+    </select>
+    <div class="hint">ใส่คีย์ได้หลายเจ้า ในหน้าตรวจบทจะเลือกให้ AI ตัวอื่นเขียนใหม่ได้ ค่าเขียนบทประมาณ 0.1 บาท/คลิป<br>⚠️ ต้องใช้ <b>API key</b> แยกจากแพ็กเกจรายเดือน (ChatGPT Plus / Claude Pro ใช้แทนกันไม่ได้) ต้องเติมเงินในหน้า API ก่อน</div>
+    <details><summary>Claude — คีย์จาก console.anthropic.com</summary>
+      <input data-k="anthropic_api_key" placeholder="sk-ant-...">
+      <label>รุ่น</label><input data-k="llm_model"></details>
+    <details><summary>ChatGPT — คีย์จาก platform.openai.com/api-keys</summary>
+      <input data-k="openai_api_key" placeholder="sk-...">
+      <label>รุ่น</label><input data-k="openai_model"></details>
+    <details><summary>Gemini — ใช้คีย์ Gemini ด้านบน</summary>
+      <label>รุ่น</label><input data-k="gemini_text_model"></details>
+    <details><summary>OpenCode — คีย์จาก opencode.ai/zen</summary>
+      <input data-k="opencode_api_key" placeholder="sk-...">
+      <label>รุ่น (ดูชื่อรุ่นในหน้า Zen)</label><input data-k="opencode_model"></details>
+    <div class="sw"><span>ให้ดูบทพูดก่อนสร้างวิดีโอทุกครั้ง</span><input type="checkbox" data-k="review_first"></div>
   </div>
   <div class="card"><h2>🤖 วิดีโอ AI</h2>
     <label>ใช้ AI ตัวไหนสร้างวิดีโอ</label>
@@ -207,8 +227,9 @@ a{color:var(--brand)}
 
 <script>
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+let provs={default:'auto',list:[]}, revMode=null;
 let mode='slideshow', view='create', detailId=null, timer=null, settings={};
-const STATUS={queued:'รอคิว',running:'กำลังทำ',uploading:'อัปโหลด',done:'เสร็จแล้ว',error:'ผิดพลาด'};
+const STATUS={review:'รอตรวจบท',queued:'รอคิว',running:'กำลังทำ',uploading:'อัปโหลด',done:'เสร็จแล้ว',error:'ผิดพลาด'};
 
 async function api(path,opt={}){
   const r=await fetch(path,opt);
@@ -231,7 +252,7 @@ function show(v){
 function go(v,id){
   view=v; detailId=id||null; show(v); clearInterval(timer);
   if(v==='jobs'){loadJobs();timer=setInterval(loadJobs,3000)}
-  if(v==='detail'){loadDetail(true);timer=setInterval(()=>loadDetail(false),3000)}
+  if(v==='detail'){api('/api/providers').then(p=>{provs=p;if($('#revModes'))loadDetail(true)}).catch(()=>{});loadDetail(true);timer=setInterval(()=>loadDetail(false),3000)}
   if(v==='settings')loadSettings();
   location.hash=v+(id?'/'+id:'');
 }
@@ -248,6 +269,7 @@ async function createJob(){
   fd.append('url',$('#url').value.trim()); fd.append('mode',mode);
   fd.append('name',$('#name').value); fd.append('price',$('#price').value);
   fd.append('script',$('#ownScript').value);
+  fd.append('review',$('#prev').checked?'1':'0');
   fd.append('post_fb',$('#pfb').checked?'1':'0'); fd.append('post_tiktok',$('#ptt').checked?'1':'0');
   for(const f of $('#files').files) fd.append('files',f);
   $('#goBtn').disabled=true; $('#createErr').textContent='';
@@ -277,7 +299,7 @@ async function loadDetail(force){
   const j=await api('/api/jobs/'+detailId);
   const key=j.status+j.progress+j.fb_status+j.tt_status+j.step;
   if(!force&&key===lastDetailKey)return; lastDetailKey=key;
-  const editing=document.activeElement&&['TEXTAREA','INPUT'].includes(document.activeElement.tagName)||($('#fixFiles')&&$('#fixFiles').files.length)||($('#flowFiles')&&$('#flowFiles').files.length);
+  const editing=(j.status==='review'&&$('#revModes'))||document.activeElement&&['TEXTAREA','INPUT'].includes(document.activeElement.tagName)||($('#fixFiles')&&$('#fixFiles').files.length)||($('#flowFiles')&&$('#flowFiles').files.length);
   if(editing&&!force)return;
   const lines=(j.script?.lines||[]).join('\n');
   $('#detail').innerHTML=`
@@ -294,6 +316,7 @@ async function loadDetail(force){
         <div class="hint">แคปหน้าจอรูปสินค้าจากแอป Shopee แล้วเลือกที่นี่ได้เลย</div>
         <div style="height:8px"></div><button class="btn" onclick="fixInfo()">▶️ ลองใหม่ด้วยข้อมูลนี้</button>
       </details>`:''}
+    ${j.status==='review'?reviewCard(j):''}
     ${j.has_video?`<div style="height:10px"></div><video src="/api/jobs/${j.id}/video?${j.updated}" controls playsinline preload="metadata"></video>`:''}
   </div>
   ${j.has_video?`
@@ -313,7 +336,7 @@ async function loadDetail(force){
     <label>แคปชัน</label><textarea id="cap" rows="5">${esc(j.caption||'')}</textarea>
     <div style="height:6px"></div><button class="btn2" onclick="saveCap()">💾 บันทึกแคปชัน</button>
   </div>`:''}
-  ${j.script?.motion_prompt&&j.status!=='running'&&j.status!=='queued'?`
+  ${j.script?.motion_prompt&&!['running','queued','review'].includes(j.status)?`
   <div class="card">
     <h2>🎥 ทำภาพให้สวยขึ้นด้วย Google Flow</h2>
     <div class="hint">ใช้เครดิต Flow ที่มีอยู่ ไม่เสียเงินเพิ่ม ไม่ต้องคิดบทพูด ระบบใส่เสียง ซับ และโพสต์ให้เหมือนเดิม<br>
@@ -325,7 +348,7 @@ async function loadDetail(force){
     <label>คลิปจาก Flow (เลือกได้หลายคลิป)</label><input id="flowFiles" type="file" multiple accept="video/*">
     <div style="height:8px"></div><button class="btn" onclick="addFlow()">🎬 ใส่คลิป Flow แล้วสร้างวิดีโอใหม่</button>
   </div>`:''}
-  ${j.script?.lines?`
+  ${j.script?.lines&&j.status!=='review'?`
   <div class="card">
     <h2>📝 สคริปต์เสียงพากย์</h2>
     <div class="hint">แก้ไขได้ บรรทัดละ 1 ซับไตเติล แล้วกดสร้างใหม่</div>
@@ -340,6 +363,42 @@ async function loadDetail(force){
     </div>
     <details><summary>บันทึกการทำงาน</summary><pre>${esc(j.log||'')}</pre></details>
   </div>`;
+}
+function reviewCard(j){
+  if(!revMode||revMode.id!==j.id)revMode={id:j.id,m:j.mode};
+  const opts=provs.list.map(p=>`<option value="${p.id}" ${p.id===provs.default?'selected':''}>${esc(p.label)}</option>`).join('');
+  const M={slideshow:'🖼️ สไลด์รูป<small>~1 บาท</small>',mix:'✨ ผสม AI<small>~10 บาท</small>',ai:'🤖 AI ล้วน<small>~20 บาท</small>'};
+  return `<div style="height:12px"></div>
+    <div class="hint">✍️ บทนี้เขียนโดย <b>${esc(j.script?._by||'AI')}</b> — แก้ได้เลย บรรทัดละ 1 ซับ (ไม่เกิน ~22 ตัวอักษร)</div>
+    <textarea id="lines" rows="11">${esc((j.script?.lines||[]).join('\n'))}</textarea>
+    <div class="hint">${(j.script?.lines||[]).length} บรรทัด · พูดประมาณ ${Math.round((j.script?.lines||[]).join('').length/9)} วินาที</div>
+    ${opts?`<div class="row" style="margin-top:8px"><select id="prov" style="flex:1 1 40%">${opts}</select>
+      <button class="btn2" id="rwBtn" onclick="rewrite()">🔄 ให้ AI เขียนใหม่</button></div>`:
+      `<div class="hint">ยังไม่มีคีย์ AI — ใส่ในหน้า ⚙️ ตั้งค่า แล้วกดเขียนใหม่ได้</div>`}
+    <div style="height:8px"></div>
+    <button class="btn2" style="width:100%" id="vBtn" onclick="voicePreview()">🔊 ฟังเสียงพากย์ตัวอย่าง</button>
+    ${j.has_voice?`<audio id="pv" src="/api/jobs/${j.id}/voice?${j.updated}" controls style="width:100%;margin-top:8px"></audio>`:''}
+    <label>รูปแบบวิดีโอ</label>
+    <div class="seg" id="revModes">${Object.entries(M).map(([k,v])=>`<button class="${revMode.m===k?'on':''}" onclick="revMode.m='${k}';$$('#revModes button').forEach(b=>b.classList.toggle('on',b===this))">${v}</button>`).join('')}</div>
+    <div style="height:12px"></div>
+    <button class="btn" onclick="approve()">🎬 บทโอเค ➜ สร้างคลิปเลย</button>
+    <div class="hint">กดแล้วระบบสร้างภาพ ใส่เสียง ใส่ซับ จนได้คลิป${j.post_fb||j.post_tiktok?' แล้วโพสต์ให้ตามที่ติ๊กไว้':''}</div>`;
+}
+const curLines=()=>$('#lines').value.split('\n');
+async function rewrite(){
+  const b=$('#rwBtn');b.disabled=true;b.textContent='⏳ กำลังเขียน...';
+  try{await post(`/api/jobs/${detailId}/rewrite`,{provider:$('#prov').value});toast('ได้บทใหม่แล้ว');await loadDetail(true)}
+  catch(e){toast(e.message);b.disabled=false;b.textContent='🔄 ให้ AI เขียนใหม่'}
+}
+async function voicePreview(){
+  const b=$('#vBtn');b.disabled=true;b.textContent='⏳ กำลังสร้างเสียง (~15 วินาที)...';
+  try{const r=await post(`/api/jobs/${detailId}/voice`,{lines:curLines()});toast('เสียง: '+r.engine);
+    await loadDetail(true);$('#pv')?.play().catch(()=>{})}
+  catch(e){toast(e.message);b.disabled=false;b.textContent='🔊 ฟังเสียงพากย์ตัวอย่าง'}
+}
+async function approve(){
+  try{await post(`/api/jobs/${detailId}/approve`,{lines:curLines(),mode:revMode?.m});toast('เริ่มสร้างคลิปแล้ว');loadDetail(true)}
+  catch(e){toast(e.message)}
 }
 async function postTo(t){await post(`/api/jobs/${detailId}/post/${t}`);toast('กำลังส่ง...');setTimeout(()=>loadDetail(true),1500)}
 async function saveCap(){await post(`/api/jobs/${detailId}/caption`,{caption:$('#cap').value});toast('บันทึกแล้ว')}
@@ -375,7 +434,7 @@ async function saveSettings(){
 async function start(){
   try{await api('/api/me')}catch{return}
   try{const s=await api('/api/settings');settings=s;
-    mode=s.default_mode||'slideshow';$('#pfb').checked=s.auto_post_fb==='1';$('#ptt').checked=s.auto_post_tiktok==='1';}catch{}
+    mode=s.default_mode||'slideshow';$('#pfb').checked=s.auto_post_fb==='1';$('#prev').checked=s.review_first!=='0';$('#ptt').checked=s.auto_post_tiktok==='1';}catch{}
   $$('#modes button').forEach(x=>x.classList.toggle('on',x.dataset.m===mode));
   const [v,id]=(location.hash.slice(1).split('?')[0]||'create').split('/');
   if(location.hash.includes('tt=ok'))toast('เชื่อม TikTok สำเร็จ ✅');

@@ -1,4 +1,4 @@
-"""Write a short Thai selling script with Claude (cheap Haiku model).
+"""Write a short Thai selling script with Claude, ChatGPT, Gemini or OpenCode.
 
 Falls back to a simple template when no API key is set, so the system
 still works on day one.
@@ -57,6 +57,34 @@ def _parse(text):
     return data
 
 
+PROVIDERS = {  # id: (label, settings key)
+    "claude": ("Claude", "anthropic_api_key"),
+    "openai": ("ChatGPT", "openai_api_key"),
+    "gemini": ("Gemini", "gemini_api_key"),
+    "opencode": ("OpenCode", "opencode_api_key"),
+}
+
+
+def available(settings):
+    """Providers that have a key, in the order 'auto' tries them."""
+    return [p for p, (_, k) in PROVIDERS.items() if settings.get(k)]
+
+
+def _err(name, r):
+    return RuntimeError(f"{name} เขียนสคริปต์ไม่สำเร็จ ({r.status_code}): {r.text[:300]}")
+
+
+def _claude(prompt, settings):
+    r = httpx.post("https://api.anthropic.com/v1/messages", timeout=90, headers={
+        "x-api-key": settings["anthropic_api_key"], "anthropic-version": "2023-06-01",
+        "content-type": "application/json"},
+        json={"model": settings.get("llm_model") or "claude-haiku-5-5", "max_tokens": 1500,
+              "messages": [{"role": "user", "content": prompt}]})
+    if r.status_code != 200:
+        raise _err("Claude", r)
+    return _parse("".join(b.get("text", "") for b in r.json().get("content", [])))
+
+
 def _gemini(prompt, settings):
     model = settings.get("gemini_text_model") or "gemini-2.5-flash"
     r = httpx.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", timeout=90,
@@ -64,23 +92,64 @@ def _gemini(prompt, settings):
                    json={"contents": [{"parts": [{"text": prompt}]}],
                          "generationConfig": {"responseMimeType": "application/json", "temperature": 0.9}})
     if r.status_code != 200:
-        raise RuntimeError(f"Gemini เขียนสคริปต์ไม่สำเร็จ ({r.status_code}): {r.text[:300]}")
+        raise _err("Gemini", r)
     parts = r.json()["candidates"][0]["content"]["parts"]
     return _parse("".join(p.get("text", "") for p in parts))
 
 
-def generate(product: dict, settings: dict) -> dict:
-    key = settings.get("anthropic_api_key")
+def _chat(name, base, key, model, prompt, json_mode):
+    """OpenAI-style /chat/completions (OpenAI, OpenCode Zen and other compatible gateways)."""
+    body = {"model": model, "messages": [{"role": "user", "content": prompt}]}
+    if json_mode:
+        body["response_format"] = {"type": "json_object"}
+    r = httpx.post(base.rstrip("/") + "/chat/completions", timeout=120, json=body,
+                   headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"})
+    if r.status_code != 200:
+        raise _err(name, r)
+    msg = r.json()["choices"][0]["message"]
+    content = msg.get("content")
+    if isinstance(content, list):
+        content = "".join(c.get("text", "") for c in content)
+    return _parse(content or "")
+
+
+def _openai(prompt, settings):
+    return _chat("ChatGPT", "https://api.openai.com/v1", settings["openai_api_key"],
+                 settings.get("openai_model") or "gpt-5-mini", prompt, True)
+
+
+def _opencode(prompt, settings):
+    return _chat("OpenCode", "https://opencode.ai/zen/v1", settings["opencode_api_key"],
+                 settings.get("opencode_model") or "deepseek-v4-flash", prompt, False)
+
+
+_CALL = {"claude": _claude, "openai": _openai, "gemini": _gemini, "opencode": _opencode}
+
+
+def generate(product: dict, settings: dict, provider: str | None = None) -> dict:
+    """provider: claude/openai/gemini/opencode, or None/'auto' = setting, then first one with a key.
+    Result has '_by' = which AI wrote it. If the chosen AI fails, the next one with a key is tried."""
     prompt = PROMPT.format(name=product.get("name"), price=product.get("price") or "ไม่ระบุ",
                            description=(product.get("description") or "-")[:1500])
-    if not key and settings.get("gemini_api_key"):
-        return _gemini(prompt, settings)
-    if not key:
-        return _template(product)
-    r = httpx.post("https://api.anthropic.com/v1/messages", timeout=90, headers={
-        "x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"},
-        json={"model": settings.get("llm_model") or "claude-haiku-5-5", "max_tokens": 1500,
-              "messages": [{"role": "user", "content": prompt}]})
-    if r.status_code != 200:
-        raise RuntimeError(f"AI เขียนสคริปต์ไม่สำเร็จ ({r.status_code}): {r.text[:300]}")
-    return _parse("".join(b.get("text", "") for b in r.json().get("content", [])))
+    have = available(settings)
+    want = provider if provider and provider != "auto" else settings.get("llm_provider") or "auto"
+    if want != "auto" and want not in have:
+        raise RuntimeError(f"ยังไม่ได้ใส่ API key ของ {PROVIDERS.get(want, (want,))[0]} ในหน้าตั้งค่า")
+    order = ([want] if want != "auto" else []) + [p for p in have if p != want]
+    if not order:
+        data = _template(product)
+        data["_by"] = "แม่แบบ (ยังไม่มีคีย์ AI)"
+        return data
+    errors = []
+    for p in order:
+        try:
+            data = _CALL[p](prompt, settings)
+            data["_by"] = PROVIDERS[p][0]
+            if errors:
+                data["_note"] = " / ".join(errors)
+            return data
+        except Exception as e:
+            errors.append(str(e)[:200])
+            if provider and provider != "auto":
+                break  # owner picked this AI on purpose: report its error instead of silently switching
+    raise RuntimeError(" / ".join(errors))

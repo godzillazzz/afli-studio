@@ -10,8 +10,14 @@ DB_PATH = os.path.join(DATA_DIR, "afli.db")
 _lock = threading.Lock()
 
 DEFAULT_SETTINGS = {
+    "llm_provider": "auto",
     "anthropic_api_key": "",
     "llm_model": "claude-haiku-5-5",
+    "openai_api_key": "",
+    "openai_model": "gpt-5-mini",
+    "opencode_api_key": "",
+    "opencode_model": "deepseek-v4-flash",
+    "review_first": "1",
     "tts_voice": "th-TH-PremwadeeNeural",
     "tts_rate": "+12%",
     "tts_engine": "edge",
@@ -39,7 +45,7 @@ DEFAULT_SETTINGS = {
     "music_volume": "0.12",
 }
 
-SECRET_KEYS = {"anthropic_api_key", "fal_key", "gemini_api_key", "fb_page_token", "tiktok_client_secret",
+SECRET_KEYS = {"anthropic_api_key", "openai_api_key", "opencode_api_key", "fal_key", "gemini_api_key", "fb_page_token", "tiktok_client_secret",
                "tiktok_access_token", "tiktok_refresh_token"}
 
 
@@ -62,6 +68,9 @@ def init():
             post_fb INTEGER DEFAULT 0, post_tiktok INTEGER DEFAULT 0,
             fb_status TEXT, tt_status TEXT, log TEXT DEFAULT '',
             reuse_script INTEGER DEFAULT 0)""")
+        cols = {r[1] for r in c.execute("PRAGMA table_info(jobs)")}
+        if "review" not in cols:  # added later: 1 = stop after the script so the owner can check it
+            c.execute("ALTER TABLE jobs ADD COLUMN review INTEGER DEFAULT 0")
         # jobs interrupted by a restart go back to the queue
         c.execute("UPDATE jobs SET status='queued' WHERE status='running'")
 
