@@ -101,6 +101,13 @@ def process(job_id):
         n_ai = max(1, int(s.get("ai_clip_count") or 2))
     elif mode == "mix":
         n_ai = 1
+    key_name = "gemini_api_key" if s.get("ai_provider") == "veo" else "fal_key"
+    if n_ai and user_videos:
+        n_ai = 0  # owner supplied clips (e.g. from Google Flow): use them, no paid AI
+        db.append_log(job_id, "ใช้คลิปที่อัปโหลด (เช่นจาก Google Flow) แทนการสร้างคลิป AI")
+    elif n_ai and not s.get(key_name):
+        n_ai = 0
+        db.append_log(job_id, "ยังไม่ได้ใส่ API key ของวิดีโอ AI — ทำเป็นสไลด์รูปแทน")
     for i, img in enumerate(images[:n_ai]):
         step(job_id, f"AI กำลังสร้างวิดีโอ {i + 1}/{min(n_ai, len(images))} (ใช้เวลา 1-5 นาที)", 35 + i * 10)
         out = os.path.join(seg_dir, f"ai{i}.mp4")
