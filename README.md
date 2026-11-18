@@ -9,11 +9,16 @@
 บนเซิร์ฟเวอร์ Debian:
 
 ```bash
-# 1) คัดลอกโฟลเดอร์ afli-studio ไปไว้บนเซิร์ฟเวอร์ (หรือแตกไฟล์ zip)
-cd afli-studio
-# 2) รันตัวติดตั้ง
-sudo bash install.sh
+git clone https://github.com/godzillazzz/afli-studio.git && cd afli-studio && sudo bash install.sh
 ```
+
+ถ้าเครื่องไม่มีคำสั่ง git ให้ใช้คำสั่งนี้แทน:
+
+```bash
+curl -L https://github.com/godzillazzz/afli-studio/archive/refs/heads/main.tar.gz | tar xz && cd afli-studio-main && sudo bash install.sh
+```
+
+**อัปเดตเป็นเวอร์ชันใหม่:** `cd afli-studio && git pull && sudo bash install.sh`
 
 ตัวติดตั้งจะลง Docker ให้เอง ถามรหัสผ่าน แล้วแสดงที่อยู่เว็บ เช่น `http://192.168.23.94:8088`
 
