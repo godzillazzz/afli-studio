@@ -14,6 +14,7 @@ import base64
 import os
 import re
 import subprocess
+import time
 
 import edge_tts
 import httpx
@@ -59,8 +60,12 @@ def _gemini(lines, s, wav_path):
             "generationConfig": {"responseModalities": ["AUDIO"],
                                  "speechConfig": {"voiceConfig": {"prebuiltVoiceConfig": {
                                      "voiceName": s.get("gemini_voice") or "Leda"}}}}}
-    r = httpx.post(f"{GEMINI}/models/{model}:generateContent", json=body, timeout=180,
-                   headers={"x-goog-api-key": key, "Content-Type": "application/json"})
+    for attempt in range(3):  # Gemini sometimes answers 503 "high demand" for a moment
+        r = httpx.post(f"{GEMINI}/models/{model}:generateContent", json=body, timeout=180,
+                       headers={"x-goog-api-key": key, "Content-Type": "application/json"})
+        if r.status_code not in (429, 500, 503):
+            break
+        time.sleep(5 * (attempt + 1))
     if r.status_code >= 300:
         raise RuntimeError(f"Gemini TTS {r.status_code}: {r.text[:300]}")
     parts = r.json()["candidates"][0]["content"]["parts"]

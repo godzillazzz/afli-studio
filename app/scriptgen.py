@@ -5,6 +5,7 @@ still works on day one.
 """
 import json
 import re
+import time
 
 import httpx
 
@@ -78,6 +79,10 @@ def _err(name, r):
     hint = ""
     if r.status_code == 429 or "credit" in msg.lower() or "quota" in msg.lower():
         hint = " ➜ เครดิตหมด/ยังไม่ได้เติมเงินในหน้า API"
+    elif r.status_code in (500, 503) or "high demand" in msg.lower() or "overloaded" in msg.lower():
+        hint = " ➜ เซิร์ฟเวอร์ AI คนใช้เยอะชั่วคราว ลองใหม่อีกสักครู่"
+    elif r.status_code == 402 or "balance" in msg.lower():
+        hint = " ➜ ยอดเงินไม่พอ ต้องเติมเงินก่อน"
     elif r.status_code in (401, 403):
         hint = " ➜ คีย์ไม่ถูกต้อง"
     elif r.status_code == 404 or "unavailable" in msg.lower() or "no longer" in msg.lower():
@@ -96,12 +101,26 @@ def _claude(prompt, settings):
     return _parse("".join(b.get("text", "") for b in r.json().get("content", [])))
 
 
+GEMINI_BACKUP_MODELS = ["gemini-3.7-flash", "gemini-3.5-flash-lite"]
+
+
 def _gemini(prompt, settings):
-    model = settings.get("gemini_text_model") or "gemini-3.8-flash"
-    r = httpx.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", timeout=90,
-                   headers={"x-goog-api-key": settings["gemini_api_key"], "Content-Type": "application/json"},
-                   json={"contents": [{"parts": [{"text": prompt}]}],
-                         "generationConfig": {"responseMimeType": "application/json", "temperature": 0.9}})
+    """Busy (503/500) or rate-limited (429) Gemini: wait and retry, then try backup models."""
+    first = settings.get("gemini_text_model") or "gemini-3.8-flash"
+    models = [first] + [m for m in GEMINI_BACKUP_MODELS if m != first]
+    r = None
+    for model in models:
+        for attempt in range(2):
+            r = httpx.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+                           timeout=90,
+                           headers={"x-goog-api-key": settings["gemini_api_key"], "Content-Type": "application/json"},
+                           json={"contents": [{"parts": [{"text": prompt}]}],
+                                 "generationConfig": {"responseMimeType": "application/json", "temperature": 0.9}})
+            if r.status_code not in (429, 500, 503):
+                break
+            time.sleep(4 * (attempt + 1))
+        if r.status_code not in (404, 429, 500, 503):
+            break
     if r.status_code != 200:
         raise _err("Gemini", r)
     parts = r.json()["candidates"][0]["content"]["parts"]
