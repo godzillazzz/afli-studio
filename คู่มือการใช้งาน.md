@@ -9,22 +9,22 @@
 บนเซิร์ฟเวอร์ Debian:
 
 ```bash
-git clone https://github.com/godzillazzz/afli-studio.git && cd afli-studio && sudo bash install.sh
+git clone https://github.com/godzillazzz/afli-studio.git && cd afli-studio && bash install.sh
 ```
 
 ถ้าเครื่องไม่มีคำสั่ง git ให้ใช้คำสั่งนี้แทน:
 
 ```bash
-curl -L https://github.com/godzillazzz/afli-studio/archive/refs/heads/main.tar.gz | tar xz && cd afli-studio-main && sudo bash install.sh
+curl -L https://github.com/godzillazzz/afli-studio/archive/refs/heads/main.tar.gz | tar xz && cd afli-studio-main && bash install.sh
 ```
 
-**อัปเดตเป็นเวอร์ชันใหม่:** `cd afli-studio && git pull && sudo bash install.sh`
+**อัปเดตเป็นเวอร์ชันใหม่:** `cd afli-studio && git pull && bash install.sh`
 
 ตัวติดตั้งจะลง Docker ให้เอง ถามรหัสผ่าน แล้วแสดงที่อยู่เว็บ เช่น `http://192.168.23.94:8088`
 
 > ระบบรันแยกใน Docker คนละพอร์ตกับระบบเดิม ไม่ยุ่งกับฐานข้อมูลหรือระบบอื่นในเครื่อง
 
-**อัปเดตหรือรีสตาร์ต:** รัน `sudo bash install.sh` ซ้ำได้เลย ข้อมูลจะไม่หาย (เก็บอยู่ในโฟลเดอร์ `data/`)
+**อัปเดตหรือรีสตาร์ต:** รัน `bash install.sh` ซ้ำได้เลย ข้อมูลจะไม่หาย (เก็บอยู่ในโฟลเดอร์ `data/`)
 
 ## 2. เปิดบนมือถือ
 
@@ -106,7 +106,7 @@ curl -L https://github.com/godzillazzz/afli-studio/archive/refs/heads/main.tar.g
 
 | อาการ | วิธีแก้ |
 |---|---|
-| เปิดเว็บไม่ได้ | บนเซิร์ฟเวอร์รัน `sudo docker ps` ดูว่ามี `afli-studio` หรือไม่ ถ้าไม่มี รัน `sudo bash install.sh` |
+| เปิดเว็บไม่ได้ | บนเซิร์ฟเวอร์รัน `sudo docker ps` ดูว่ามี `afli-studio` หรือไม่ ถ้าไม่มี รัน `bash install.sh` |
 | ดึงข้อมูล Shopee ไม่ได้ | ใส่ชื่อและอัปโหลดรูปเอง (ข้อ 3) |
 | Facebook ผิดพลาด | token หมดอายุหรือสิทธิ์ไม่ครบ ทำข้อ 5 ใหม่ |
 | ดูบันทึกการทำงาน | หน้าคลิป ➜ "บันทึกการทำงาน" หรือรัน `sudo docker logs afli-studio --tail 100` |
