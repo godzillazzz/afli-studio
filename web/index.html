@@ -248,7 +248,7 @@ async function loadDetail(force){
   const j=await api('/api/jobs/'+detailId);
   const key=j.status+j.progress+j.fb_status+j.tt_status+j.step;
   if(!force&&key===lastDetailKey)return; lastDetailKey=key;
-  const editing=document.activeElement&&['TEXTAREA','INPUT'].includes(document.activeElement.tagName)||($('#fixFiles')&&$('#fixFiles').files.length);
+  const editing=document.activeElement&&['TEXTAREA','INPUT'].includes(document.activeElement.tagName)||($('#fixFiles')&&$('#fixFiles').files.length)||($('#flowFiles')&&$('#flowFiles').files.length);
   if(editing&&!force)return;
   const lines=(j.script?.lines||[]).join('\n');
   $('#detail').innerHTML=`
@@ -284,6 +284,18 @@ async function loadDetail(force){
     <label>แคปชัน</label><textarea id="cap" rows="5">${esc(j.caption||'')}</textarea>
     <div style="height:6px"></div><button class="btn2" onclick="saveCap()">💾 บันทึกแคปชัน</button>
   </div>`:''}
+  ${j.script?.motion_prompt&&j.status!=='running'&&j.status!=='queued'?`
+  <div class="card">
+    <h2>🎥 ทำภาพให้สวยขึ้นด้วย Google Flow</h2>
+    <div class="hint">ใช้เครดิต Flow ที่มีอยู่ ไม่เสียเงินเพิ่ม ไม่ต้องคิดบทพูด ระบบใส่เสียง ซับ และโพสต์ให้เหมือนเดิม<br>
+    1) กดคัดลอกคำสั่งด้านล่าง<br>2) เปิด Flow ➜ ใส่รูปสินค้า ➜ วางคำสั่ง ➜ สร้าง ➜ ดาวน์โหลดคลิป<br>3) เลือกคลิปที่ดาวน์โหลด แล้วกดปุ่มสีส้ม</div>
+    <textarea id="flowPrompt" rows="4" readonly>${esc(j.script.motion_prompt)}</textarea>
+    <div style="height:8px"></div>
+    <button class="btn2" style="width:100%" onclick="copy($('#flowPrompt').value)">📋 คัดลอกคำสั่งสำหรับ Flow</button>
+    ${j.product?.images?.[0]?`<div style="height:8px"></div><a class="btn2" style="display:block;text-align:center;text-decoration:none;padding:13px;border-radius:12px;font-weight:600;color:inherit" href="${esc(j.product.images[0])}" target="_blank">🖼️ เปิดรูปสินค้า (กดค้างเพื่อบันทึก)</a>`:''}
+    <label>คลิปจาก Flow (เลือกได้หลายคลิป)</label><input id="flowFiles" type="file" multiple accept="video/*">
+    <div style="height:8px"></div><button class="btn" onclick="addFlow()">🎬 ใส่คลิป Flow แล้วสร้างวิดีโอใหม่</button>
+  </div>`:''}
   ${j.script?.lines?`
   <div class="card">
     <h2>📝 สคริปต์เสียงพากย์</h2>
@@ -303,6 +315,12 @@ async function loadDetail(force){
 async function postTo(t){await post(`/api/jobs/${detailId}/post/${t}`);toast('กำลังส่ง...');setTimeout(()=>loadDetail(true),1500)}
 async function saveCap(){await post(`/api/jobs/${detailId}/caption`,{caption:$('#cap').value});toast('บันทึกแล้ว')}
 async function rerender(){await post(`/api/jobs/${detailId}/rerender`,{lines:$('#lines').value.split('\n')});toast('กำลังสร้างใหม่');loadDetail(true)}
+async function addFlow(){
+  const fs=$('#flowFiles').files; if(!fs.length){toast('เลือกคลิปจาก Flow ก่อน');return}
+  const fd=new FormData(); for(const f of fs)fd.append('files',f);
+  toast('กำลังอัปโหลด... อย่าเพิ่งปิดหน้านี้');
+  try{await api(`/api/jobs/${detailId}/info`,{method:'POST',body:fd});toast('กำลังสร้างวิดีโอใหม่');loadDetail(true)}catch(e){toast(e.message)}
+}
 async function fixInfo(){
   const fd=new FormData();fd.append('name',$('#fixName').value);fd.append('price',$('#fixPrice').value);
   for(const f of $('#fixFiles').files)fd.append('files',f);

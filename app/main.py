@@ -126,7 +126,8 @@ async def fix_info(job_id: int, name: str = Form(""), price: str = Form(""),
             ext = os.path.splitext(f.filename)[1].lower() or ".jpg"
             with open(os.path.join(up, f"u{start + i:02d}{ext}"), "wb") as out:
                 shutil.copyfileobj(f.file, out)
-    db.update_job(job_id, product=product, status="queued", step="รอคิว", progress=0, error=None, reuse_script=0)
+    keep = int(bool((j.get("script") or {}).get("lines")))  # adding Flow clips keeps the same script
+    db.update_job(job_id, product=product, status="queued", step="รอคิว", progress=0, error=None, reuse_script=keep)
     return {"ok": True}
 
 

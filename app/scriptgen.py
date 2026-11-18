@@ -27,7 +27,7 @@ PROMPT = """คุณคือนักเขียนสคริปต์ค�
  "caption": "แคปชันโพสต์ 1-2 ประโยค มีอีโมจิได้",
  "hashtags": ["#...", "#..."],
  "short_title": "ชื่อสินค้าแบบสั้น ไม่เกิน 18 ตัวอักษร",
- "motion_prompt": "English prompt describing a short product showcase camera motion for an image-to-video model"}}"""
+ "motion_prompt": "English prompt (2-3 sentences) for an image-to-video model like Google Veo/Flow: describe THIS product from the photo being showcased in a vertical 9:16 ad shot, camera motion, lighting, setting that fits the product, hands using it if natural; no text, no logos, no talking"}}"""
 
 
 def _template(product):
@@ -44,7 +44,7 @@ def _template(product):
         lines.append(f"ราคาแค่ {price} บาทเท่านั้น")
     lines += ["ของมีจำนวนจำกัดนะ", "สนใจกดตะกร้าได้เลย!"]
     return {"lines": lines, "caption": f"{short} ของมันต้องมี ✨", "hashtags": ["#ของดีบอกต่อ", "#shopee", "#รีวิว"],
-            "short_title": short, "motion_prompt": "slow cinematic push-in on the product, soft studio lighting"}
+            "short_title": short, "motion_prompt": f"Vertical 9:16 product ad shot of {name}. Slow cinematic camera push-in and gentle orbit around the product on a clean modern table, soft studio lighting, shallow depth of field. No text, no logos, no people talking."}
 
 
 def generate(product: dict, settings: dict) -> dict:
