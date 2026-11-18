@@ -71,7 +71,18 @@ def available(settings):
 
 
 def _err(name, r):
-    return RuntimeError(f"{name} เขียนสคริปต์ไม่สำเร็จ ({r.status_code}): {r.text[:300]}")
+    try:
+        msg = r.json()["error"]["message"]
+    except Exception:
+        msg = r.text[:200]
+    hint = ""
+    if r.status_code == 429 or "credit" in msg.lower() or "quota" in msg.lower():
+        hint = " ➜ เครดิตหมด/ยังไม่ได้เติมเงินในหน้า API"
+    elif r.status_code in (401, 403):
+        hint = " ➜ คีย์ไม่ถูกต้อง"
+    elif r.status_code == 404 or "unavailable" in msg.lower() or "no longer" in msg.lower():
+        hint = " ➜ ชื่อรุ่น (โมเดล) ใช้ไม่ได้แล้ว เปลี่ยนในหน้าตั้งค่า"
+    return RuntimeError(f"{name}{hint} ({r.status_code}: {msg[:160]})")
 
 
 def _claude(prompt, settings):
@@ -86,7 +97,7 @@ def _claude(prompt, settings):
 
 
 def _gemini(prompt, settings):
-    model = settings.get("gemini_text_model") or "gemini-2.5-flash"
+    model = settings.get("gemini_text_model") or "gemini-3.8-flash"
     r = httpx.post(f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent", timeout=90,
                    headers={"x-goog-api-key": settings["gemini_api_key"], "Content-Type": "application/json"},
                    json={"contents": [{"parts": [{"text": prompt}]}],
@@ -120,7 +131,7 @@ def _openai(prompt, settings):
 
 def _opencode(prompt, settings):
     return _chat("OpenCode", "https://opencode.ai/zen/v1", settings["opencode_api_key"],
-                 settings.get("opencode_model") or "deepseek-v4-flash", prompt, False)
+                 settings.get("opencode_model") or "deepseek-v4.1-flash", prompt, False)
 
 
 _CALL = {"claude": _claude, "openai": _openai, "gemini": _gemini, "opencode": _opencode}
@@ -152,4 +163,4 @@ def generate(product: dict, settings: dict, provider: str | None = None) -> dict
             errors.append(str(e)[:200])
             if provider and provider != "auto":
                 break  # owner picked this AI on purpose: report its error instead of silently switching
-    raise RuntimeError(" / ".join(errors))
+    raise RuntimeError("AI เขียนบทไม่สำเร็จ:\n• " + "\n• ".join(errors))

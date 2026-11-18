@@ -118,7 +118,7 @@ a{color:var(--brand)}
 <section id="v-settings" class="hide">
   <div class="card"><h2>🔑 Google Gemini API Key</h2>
     <input data-k="gemini_api_key" placeholder="AIza...">
-    <div class="hint">คีย์เดียวใช้ได้ 3 อย่าง: เสียงพากย์ธรรมชาติ, AI เขียนบท (ถ้าไม่ได้ใส่คีย์ Claude), วิดีโอ Veo<br>สร้างคีย์ที่ <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> แล้วเปิด Billing</div>
+    <div class="hint">คีย์เดียวใช้ได้ 3 อย่าง: เสียงพากย์ธรรมชาติ, AI เขียนบท, วิดีโอ AI<br>สร้างคีย์ที่ <a href="https://aistudio.google.com/apikey" target="_blank">aistudio.google.com/apikey</a> แล้วเปิด Billing</div>
   </div>
   <div class="card"><h2>🗣️ เสียงพากย์</h2>
     <label>ระบบเสียง</label>
@@ -178,18 +178,17 @@ a{color:var(--brand)}
     <label>ใช้ AI ตัวไหนสร้างวิดีโอ</label>
     <select data-k="ai_provider" onchange="provUI()">
       <option value="fal">Kling 2.1 (fal.ai) — ~9 บาท/คลิป 5 วิ</option>
-      <option value="veo">Google Veo 3.1 (Gemini API)</option>
+      <option value="veo">Google Gemini Omni Flash (คีย์ Gemini)</option>
     </select>
     <label>จำนวนคลิป AI ต่อวิดีโอ (โหมด AI ล้วน)</label>
     <select data-k="ai_clip_count"><option>1</option><option>2</option><option>3</option></select>
     <div id="pv-veo">
-      <label>รุ่น Veo</label>
+      <label>รุ่น</label>
       <select data-k="veo_model">
-        <option value="veo-3.1-lite-generate-preview">Veo 3.1 Lite — ถูกสุด ~11 บาท/คลิป 6 วิ</option>
-        <option value="veo-3.1-fast-generate-preview">Veo 3.1 Fast — แนะนำ ~22 บาท/คลิป 6 วิ</option>
-        <option value="veo-3.1-generate-preview">Veo 3.1 — สวยสุด ~86 บาท/คลิป 6 วิ</option>
+        <option value="gemini-omni-1.1-flash">Gemini Omni Flash 1.1</option>
+        <option value="gemini-omni-1.2-flash">Gemini Omni Flash 1.2 (ใหม่กว่า)</option>
       </select>
-      <div class="hint">ใช้ Gemini API Key ด้านบน Veo ไม่มีโควตาฟรี และไม่ได้ใช้เครดิตของ Google Flow</div>
+      <div class="hint">Google ปิด Veo ใน Gemini API แล้ว (ต.ค. 2026) ตัวแทนคือ Gemini Omni Flash ใช้ Gemini API Key ด้านบน คิดเงินแยกจาก Google Flow ดูยอดจริงได้ใน AI Studio</div>
     </div>
     <div id="pv-fal">
     <label>fal.ai API Key</label><input data-k="fal_key" placeholder="xxxxxxxx:xxxxxxxx">

@@ -1,8 +1,8 @@
 """AI image-to-video. Two providers, chosen in Settings:
 
   fal  - Kling 2.1 Standard via fal.ai: ~$0.25 per 5-second clip
-  veo  - Google Veo 3.1 via Gemini API (6-second 720p clip):
-         Lite ~$0.05/s, Fast ~$0.10/s, Standard ~$0.40/s
+  veo  - Google video via Gemini API. Veo 3.1 previews were shut down 2026-10-22; Google's
+         replacement is Gemini Omni Flash (interactions endpoint). Setting name kept as "veo".
 
 image_to_video() returns the cost in USD so the job can show it.
 """
@@ -13,8 +13,6 @@ import time
 import httpx
 
 FAL_PRICE_PER_CLIP = 0.25
-VEO_SECONDS = 6
-VEO_PRICE_PER_SEC = {"lite": 0.05, "fast": 0.10}  # anything else = standard 0.40
 GEMINI = "https://generativelanguage.googleapis.com/v1beta"
 NEG = "blur, distort, low quality, text, watermark, extra hands"
 
@@ -66,50 +64,57 @@ def _fal(image_path, prompt, out_path, settings, timeout=600):
     return FAL_PRICE_PER_CLIP
 
 
-# ---------------- Google Veo (Gemini API) ----------------
+# ---------------- Google Gemini Omni Flash (Gemini API, replaced Veo 3.1 in Oct 2026) ----------------
+def _find_video(obj):
+    """Walk the interaction response and return the first video content item."""
+    if isinstance(obj, dict):
+        if obj.get("type") == "video" and (obj.get("data") or obj.get("uri")):
+            return obj
+        for v in obj.values():
+            found = _find_video(v)
+            if found:
+                return found
+    elif isinstance(obj, list):
+        for v in obj:
+            found = _find_video(v)
+            if found:
+                return found
+    return None
+
+
 def _veo(image_path, prompt, out_path, settings, timeout=900):
     key = settings.get("gemini_api_key")
     if not key:
-        raise RuntimeError("ยังไม่ได้ใส่ Gemini API key ในหน้าตั้งค่า (จำเป็นสำหรับ Veo)")
-    model = settings.get("veo_model") or "veo-3.1-fast-generate-preview"
+        raise RuntimeError("ยังไม่ได้ใส่ Gemini API key ในหน้าตั้งค่า (จำเป็นสำหรับวิดีโอ Gemini)")
+    model = settings.get("veo_model") or "gemini-omni-1.1-flash"
     headers = {"x-goog-api-key": key, "Content-Type": "application/json"}
-    params = {"aspectRatio": "9:16", "durationSeconds": VEO_SECONDS, "resolution": "720p",
-              "negativePrompt": NEG}
-    img = _b64(image_path)
-    # The REST image field has had two shapes; try the documented one, then the other.
-    shapes = [{"bytesBase64Encoded": img, "mimeType": _mime(image_path)},
-              {"inlineData": {"mimeType": _mime(image_path), "data": img}}]
-    r = None
-    for shape in shapes:
-        body = {"instances": [{"prompt": prompt, "image": shape}], "parameters": params}
-        r = httpx.post(f"{GEMINI}/models/{model}:predictLongRunning", headers=headers, json=body, timeout=90)
-        if r.status_code < 300 or r.status_code != 400:
-            break
+    body = {"model": model,
+            "input": [{"type": "image", "data": _b64(image_path), "mime_type": _mime(image_path)},
+                      {"type": "text", "text": prompt + " Vertical 9:16. No dialogue, no speech, no text on screen."}],
+            "generation_config": {"video_config": {"task": "image_to_video"}},
+            "response_format": {"type": "video", "aspect_ratio": "9:16", "resolution": "720p"}}
+    r = httpx.post(f"{GEMINI}/interactions", headers=headers, json=body, timeout=timeout)
     if r.status_code >= 300:
-        raise RuntimeError(f"Veo ไม่รับงาน ({r.status_code}): {r.text[:400]}")
-    op_name = r.json()["name"]
-
+        raise RuntimeError(f"Gemini วิดีโอไม่รับงาน ({r.status_code}): {r.text[:400]}")
+    res = r.json()
     start = time.time()
-    while time.time() - start < timeout:
+    while not _find_video(res):
+        status = str(res.get("status", "")).lower()
+        if status in ("failed", "cancelled", "canceled") or res.get("error"):
+            raise RuntimeError(f"Gemini สร้างวิดีโอไม่สำเร็จ: {str(res.get('error') or res)[:300]}")
+        if not res.get("id") or status in ("completed", "done") or time.time() - start > timeout:
+            raise RuntimeError(f"Gemini ไม่ส่งวิดีโอกลับมา (อาจโดนตัวกรองเนื้อหาของ Google): {str(res)[:300]}")
         time.sleep(10)
-        op = httpx.get(f"{GEMINI}/{op_name}", headers={"x-goog-api-key": key}, timeout=30).json()
-        if op.get("error"):
-            raise RuntimeError(f"Veo สร้างวิดีโอไม่สำเร็จ: {op['error'].get('message', op['error'])}")
-        if op.get("done"):
-            break
+        res = httpx.get(f"{GEMINI}/interactions/{res['id']}", headers=headers, timeout=120).json()
+    vid = _find_video(res)
+    if vid.get("data"):
+        with open(out_path, "wb") as f:
+            f.write(base64.b64decode(vid["data"]))
     else:
-        raise RuntimeError("Veo ใช้เวลานานเกินไป")
-
-    resp = (op.get("response") or {}).get("generateVideoResponse") or {}
-    samples = resp.get("generatedSamples") or []
-    if not samples:
-        why = resp.get("raiMediaFilteredReasons") or op.get("response")
-        raise RuntimeError(f"Veo ไม่ส่งวิดีโอกลับมา (อาจโดนตัวกรองเนื้อหาของ Google): {str(why)[:300]}")
-    uri = samples[0]["video"]["uri"]
-    _save(httpx.get(uri, headers={"x-goog-api-key": key}, timeout=180, follow_redirects=True), out_path)
-
-    tier = next((t for t in VEO_PRICE_PER_SEC if t in model), None)
-    return VEO_SECONDS * VEO_PRICE_PER_SEC.get(tier, 0.40)
+        file_id = vid["uri"].rstrip("/").split("/")[-1].split(":")[0]
+        _save(httpx.get(f"{GEMINI}/files/{file_id}:download", params={"alt": "media"},
+                        headers={"x-goog-api-key": key}, timeout=300, follow_redirects=True), out_path)
+    return 0.0  # Google has not published a per-second price we can rely on; see AI Studio billing
 
 
 def _save(resp, path):

@@ -16,21 +16,21 @@ DEFAULT_SETTINGS = {
     "openai_api_key": "",
     "openai_model": "gpt-5-mini",
     "opencode_api_key": "",
-    "opencode_model": "deepseek-v4-flash",
+    "opencode_model": "deepseek-v4.1-flash",
     "review_first": "1",
     "tts_voice": "th-TH-PremwadeeNeural",
     "tts_rate": "+12%",
     "tts_engine": "edge",
     "gemini_voice": "Leda",
-    "gemini_tts_model": "gemini-2.5-flash-preview-tts",
-    "gemini_text_model": "gemini-2.5-flash",
+    "gemini_tts_model": "gemini-3.8-flash-tts",
+    "gemini_text_model": "gemini-3.8-flash",
     "tts_style": "",
     "fal_key": "",
     "fal_model": "fal-ai/kling-video/v2.1/standard/image-to-video",
     "ai_clip_count": "2",
     "ai_provider": "fal",
     "gemini_api_key": "",
-    "veo_model": "veo-3.1-fast-generate-preview",
+    "veo_model": "gemini-omni-1.1-flash",
     "fb_page_id": "",
     "fb_page_token": "",
     "tiktok_client_key": "",
@@ -43,6 +43,20 @@ DEFAULT_SETTINGS = {
     "auto_post_fb": "0",
     "auto_post_tiktok": "0",
     "music_volume": "0.12",
+}
+
+# Models the providers have shut down -> current replacement. Applied when settings are read,
+# so a value saved earlier from the settings page keeps working after an update.
+RETIRED = {
+    "gemini-2.5-flash": "gemini-3.8-flash",
+    "gemini-2.5-flash-lite": "gemini-3.8-flash",
+    "gemini-2.5-flash-preview-tts": "gemini-3.8-flash-tts",
+    "gemini-2.5-pro-preview-tts": "gemini-3.8-flash-tts",
+    "gemini-3.1-flash-tts-preview": "gemini-3.8-flash-tts",
+    "veo-3.1-generate-preview": "gemini-omni-1.1-flash",
+    "veo-3.1-fast-generate-preview": "gemini-omni-1.1-flash",
+    "veo-3.1-lite-generate-preview": "gemini-omni-1.1-flash",
+    "deepseek-v4-flash": "deepseek-v4.1-flash",
 }
 
 SECRET_KEYS = {"anthropic_api_key", "openai_api_key", "opencode_api_key", "fal_key", "gemini_api_key", "fb_page_token", "tiktok_client_secret",
@@ -80,7 +94,7 @@ def get_settings():
         rows = {r["k"]: r["v"] for r in c.execute("SELECT k, v FROM settings")}
     s = dict(DEFAULT_SETTINGS)
     s.update(rows)
-    return s
+    return {k: RETIRED.get(v, v) if isinstance(v, str) else v for k, v in s.items()}
 
 
 def set_settings(values: dict):

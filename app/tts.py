@@ -52,7 +52,7 @@ def duration(path: str) -> float:
 # ---------------- whole-script engines ----------------
 def _gemini(lines, s, wav_path):
     key = s.get("gemini_api_key")
-    model = s.get("gemini_tts_model") or "gemini-2.5-flash-preview-tts"
+    model = s.get("gemini_tts_model") or "gemini-3.8-flash-tts"
     style = (s.get("tts_style") or "").strip() or DEFAULT_STYLE
     text = style + "\n\n" + "\n".join(lines)
     body = {"contents": [{"parts": [{"text": text}]}],
@@ -63,7 +63,11 @@ def _gemini(lines, s, wav_path):
                    headers={"x-goog-api-key": key, "Content-Type": "application/json"})
     if r.status_code >= 300:
         raise RuntimeError(f"Gemini TTS {r.status_code}: {r.text[:300]}")
-    part = r.json()["candidates"][0]["content"]["parts"][0]["inlineData"]
+    parts = r.json()["candidates"][0]["content"]["parts"]
+    part = next((p.get("inlineData") or p.get("inline_data") for p in parts
+                 if p.get("inlineData") or p.get("inline_data")), None)
+    if not part:
+        raise RuntimeError("Gemini TTS ไม่ส่งเสียงกลับมา")
     pcm = wav_path + ".pcm"
     with open(pcm, "wb") as f:
         f.write(base64.b64decode(part["data"]))
