@@ -107,6 +107,29 @@ async def rerender(job_id: int, request: Request):
     return {"ok": True}
 
 
+@app.post("/api/jobs/{job_id}/info")
+async def fix_info(job_id: int, name: str = Form(""), price: str = Form(""),
+                   files: list[UploadFile] = File(default=[])):
+    j = db.get_job(job_id)
+    if not j:
+        raise HTTPException(404)
+    product = j.get("product") or {}
+    if name.strip():
+        product["name"] = name.strip()
+    if price.strip():
+        product["price"] = price.strip()
+    up = os.path.join(pipeline.job_dir(job_id), "uploads")
+    os.makedirs(up, exist_ok=True)
+    start = len(os.listdir(up))
+    for i, f in enumerate(files):
+        if f.filename:
+            ext = os.path.splitext(f.filename)[1].lower() or ".jpg"
+            with open(os.path.join(up, f"u{start + i:02d}{ext}"), "wb") as out:
+                shutil.copyfileobj(f.file, out)
+    db.update_job(job_id, product=product, status="queued", step="รอคิว", progress=0, error=None, reuse_script=0)
+    return {"ok": True}
+
+
 @app.post("/api/jobs/{job_id}/retry")
 def retry(job_id: int):
     db.update_job(job_id, status="queued", step="รอคิว", progress=0, error=None, reuse_script=0)

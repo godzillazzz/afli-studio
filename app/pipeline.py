@@ -44,6 +44,8 @@ def process(job_id):
     product = job.get("product") or {}
     if not product.get("name") or (not product.get("images") and not _uploads(up_dir)):
         step(job_id, "กำลังดึงข้อมูลสินค้าจาก Shopee", 5)
+        if not job["url"]:
+            raise RuntimeError("ไม่มีรูปสินค้า กรุณาอัปโหลดรูปสินค้าอย่างน้อย 1 รูป")
         fetched = shopee.fetch_product(job["url"])
         fetched.update({k: v for k, v in product.items() if v})  # user-typed values win
         product = fetched
@@ -84,6 +86,7 @@ def process(job_id):
     line_files = []
     for i, line in enumerate(script["lines"]):
         line_files.append(tts.speak(line, s["tts_voice"], s["tts_rate"], os.path.join(vdir, f"{i:02d}.mp3")))
+    db.append_log(job_id, f"เสียงพากย์: {tts.last_engine['name']}")
     voice = os.path.join(d, "voice.m4a")
     timings, total = video.build_voice(line_files, voice)
 
